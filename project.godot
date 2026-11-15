@@ -1,0 +1,44 @@
+; Engine configuration file.
+; MYSTERY BOX - Unlock the Unknown (Godot 4.7.2 stable)
+
+config_version=5
+
+[application]
+
+config/name="MYSTERY BOX - Unlock the Unknown"
+config/version="0.8.0"
+config/description="Arabic-historical mechanical mystery puzzle game with procedural missions."
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+config/icon="res://assets/icon/app_icon_1024.png"
+boot_splash/image="res://assets/splash/splash_portrait.png"
+boot_splash/bg_color=Color(0.04, 0.07, 0.09, 1)
+boot_splash/fullsize=true
+
+[autoload]
+
+GameState="*res://scripts/core/GameState.gd"
+Loc="*res://scripts/core/Loc.gd"
+Missions="*res://scripts/core/MissionService.gd"
+Online="*res://scripts/net/Online.gd"
+Fx="*res://scripts/core/Fx.gd"
+Analytics="*res://scripts/monetize/Analytics.gd"
+Ads="*res://scripts/monetize/Ads.gd"
+Store="*res://scripts/monetize/Store.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/size/window_width_override=540
+window/size/window_height_override=960
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep_width"
+window/handheld/orientation=1
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.07, 0.125, 0.17, 1)

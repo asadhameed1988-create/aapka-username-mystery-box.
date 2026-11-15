@@ -1,0 +1,6 @@
+.godot/
+__pycache__/
+*.keystore
+*.jks
+.env
+build/

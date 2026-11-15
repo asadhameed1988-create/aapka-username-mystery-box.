@@ -1,0 +1,91 @@
+# Builds a quick test APK in the cloud (no computer needed): push the project to a GitHub
+# repository, open the "Actions" tab, run "Build test APK", then download the artifact.
+#
+# NOT VERIFIED: this workflow has never been run. If it fails, send the red error text.
+# The two download addresses follow Godot's usual release file names; check them on
+# https://github.com/godotengine/godot-builds/releases if the download step fails.
+name: Build test APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  GODOT_VERSION: 4.7.2
+  GODOT_RELEASE: stable
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      # Phone-friendly route: if only the project ZIP was uploaded to the repository,
+      # unpack it here so the build can run.
+      - name: Unpack uploaded project ZIP (if present)
+        run: |
+          Z=$(ls *.zip 2>/dev/null | head -1 || true)
+          if [ ! -f project.godot ] && [ -n "$Z" ]; then
+            unzip -q "$Z" -d unpacked
+            ROOT=$(dirname "$(find unpacked -name project.godot | head -1)")
+            cp -a "$ROOT"/. .
+            rm -rf unpacked
+          fi
+          test -f project.godot
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download Godot and export templates
+        run: |
+          BASE="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}"
+          curl -fsSL "$BASE/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64.zip" -o godot.zip
+          curl -fsSL "$BASE/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_export_templates.tpz" -o templates.tpz
+          unzip -q godot.zip
+          mv Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64 godot && chmod +x godot
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}"
+          unzip -q templates.tpz
+          mv templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}/"
+
+      - name: Debug keystore and editor settings
+        run: |
+          keytool -genkeypair -noprompt -keystore "$HOME/debug.keystore" -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          mkdir -p "$HOME/.config/godot"
+          MINOR="${GODOT_VERSION%.*}"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+          cat > "$HOME/.config/godot/editor_settings-${MINOR}.tres" <<SETTINGS
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "${ANDROID_HOME}"
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/debug_keystore = "${HOME}/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          SETTINGS
+          sed -i 's/^          //' "$HOME/.config/godot/editor_settings-${MINOR}.tres"
+          cp "$HOME/.config/godot/editor_settings-${MINOR}.tres" "$HOME/.config/godot/editor_settings-4.tres"
+
+      - name: Import project
+        run: ./godot --headless --path . --import || true
+
+      - name: Generator test (10,000 puzzles)
+        run: ./godot --headless --path . -s tests/batch_test.gd
+
+      - name: Export APK
+        run: |
+          mkdir -p build
+          ./godot --headless --path . --export-debug "Android APK (quick test, no ads)" build/mystery_box_quick.apk
+          ls -la build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mystery-box-test-apk
+          path: build/mystery_box_quick.apk
