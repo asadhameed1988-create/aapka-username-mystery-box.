@@ -148,3 +148,19 @@ MB-010 ui/panel_brass_9slice.png 512x512 transparent
 - Tested in the browser Godot 4.7.2 build: 3,000-puzzle batch PASS (15 types), 300/300 missions, 500/500 quiz missions,
   130/130 bank questions OK, 75/75 screens, 4 full games, screenshots EN + UR checked.
 - APK: still not built (no GitHub account linked to the chat; Android tools cannot be downloaded in the sandbox).
+
+## Update 2026-11-15 (2) – Sections, no repeats, prizes (owner feedback)
+- Main menu: three sections (Islamic knowledge / General knowledge / Maths), each with endless
+  chapters of 10 boxes, 3 questions per box. Old story chapters, endless mode, journal and
+  inventory are no longer in the menu (code kept). Mechanical-puzzle toggle removed.
+- Questions: Islamic 722,169 and GK 2,360,512 different questions, maths unlimited (5 levels,
+  equations from level 2). QuestionDeck guarantees no repeats. See docs/QUESTION_SOURCES.md.
+- Prizes ("Inaamat"): one every 5 boxes, 31 in total (24 seals in bronze/silver/gold from the
+  owner's symbol sheet + 7 of the owner's pictures). Hints and store moved to Settings.
+- Generator VERSION 6, save version 3 (unfinished older box dropped once).
+- Tested in browser Godot 4.7.2: 3,000-puzzle batch PASS; ~4,000 questions checked (0 problems);
+  facts check (Al-Baqarah 286, Ya-Sin para 22, An-Nas 114, Shawwal after Ramadan, Islamabad);
+  1,500 questions per section from the deck with 0 repeats (also across save/load);
+  3,000 maths questions (0 problems); 300/300 section boxes; 17 boxes played through the game
+  screen (Islamic reached chapter 2); prizes 3 at 17 boxes; pages EN + UR.
+- Islamic questions still need review by a qualified Hanafi scholar before release.

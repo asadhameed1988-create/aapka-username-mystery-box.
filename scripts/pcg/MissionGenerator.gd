@@ -24,7 +24,7 @@ const MirrorGen = preload("res://scripts/pcg/MirrorGenerator.gd")
 const QuizGen = preload("res://scripts/pcg/QuizGenerator.gd")
 const MathGen = preload("res://scripts/pcg/MathGenerator.gd")
 
-const VERSION := 5
+const VERSION := 6
 const GENERATORS := {
 	"rings": Rings, "combo": Combo, "latch": Latch,
 	"seq": Seq, "pattern": Pattern, "lights": Lights,
@@ -120,13 +120,50 @@ static func _quiz_mission(seed_value: int, level: int, rng: RandomNumberGenerato
 	}
 
 
-## Question keys ("islam:4") asked in a mission, so the next boxes can avoid them.
+## Question keys ("islam:bank:4") asked in a mission.
 static func question_keys(mission: Dictionary) -> Array:
 	var out: Array = []
 	for st in mission.get("stages", []):
 		if str(st.get("type", "")) == "quiz":
-			out.append("%s:%d" % [str(st["params"]["cat"]), int(st["params"]["qid"])])
+			out.append("%s:%s:%d" % [str(st["params"]["cat"]), str(st["params"]["tpl"]), int(st["params"]["idx"])])
 	return out
+
+
+## A box of one section ("islam", "gk" or "math"): three questions of that kind.
+## `picks` = three {"tpl", "idx"} from QuestionDeck (ignored for maths).
+static func generate_section_box(section: String, seed_value: int, level: int, picks: Array) -> Dictionary:
+	var rng: RandomNumberGenerator = Rng.make(seed_value)
+	var stages: Array = []
+	var sigs: Array = []
+	var valid: bool = true
+	for s in 3:
+		var sub_seed: int = Rng.derive(seed_value, s + 1, 29)
+		var spec: Dictionary
+		if section == "math":
+			spec = MathGen.generate(sub_seed, level)
+		else:
+			var p: Dictionary = picks[s] if s < picks.size() else {"tpl": "bank", "idx": 0}
+			spec = QuizGen.build(section, str(p["tpl"]), int(p["idx"]), sub_seed, level)
+		valid = valid and bool(spec.get("valid", false))
+		sigs.append(str(spec.get("signature", "")))
+		stages.append(spec)
+	return {
+		"id": "mb-%d-%s-%d" % [VERSION, section, seed_value],
+		"generator_version": VERSION,
+		"seed": seed_value,
+		"difficulty": clampi(level, 1, 5),
+		"mode": "quiz",
+		"section": section,
+		"stages": stages,
+		"types": [stages[0]["type"]],
+		"visual": {
+			"material": Rng.pick(MATERIALS, rng),
+			"backdrop": Rng.pick(BACKDROPS, rng),
+			"light": Rng.pick(LIGHTS, rng),
+		},
+		"signature": "|".join(PackedStringArray(sigs)).md5_text(),
+		"valid": valid,
+	}
 
 
 ## Re-validates a mission that came from disk or the network: first its shape (Schema),

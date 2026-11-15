@@ -6,6 +6,7 @@ extends Node
 const Tester = preload("res://scripts/pcg/BatchTester.gd")
 const MissionGen = preload("res://scripts/pcg/MissionGenerator.gd")
 const Rng = preload("res://scripts/pcg/Rng.gd")
+const Content = preload("res://scripts/core/Content.gd")
 const GameScript = preload("res://scripts/game/Game.gd")
 
 const BATCH := 3000
@@ -35,32 +36,78 @@ func _ready() -> void:
 		print("TAMPER_PROBLEM ", tamper[i])
 	await get_tree().process_frame
 
-	# Question bank: every question must validate and show three different answers.
-	var Bank = load("res://scripts/pcg/QuestionBank.gd")
+	# Questions: every template is checked (small ones fully, big ones by 400 samples).
 	var QuizGen = load("res://scripts/pcg/QuizGenerator.gd")
-	var bank_bad: int = 0
-	var bank_total: int = 0
+	var Deck = load("res://scripts/pcg/QuestionDeck.gd")
+	var MathG = load("res://scripts/pcg/MathGenerator.gd")
 	for cat in ["islam", "gk"]:
-		var items: Array = Bank.bank(cat)
-		for qid in items.size():
-			bank_total += 1
-			var spec_q: Dictionary = {"type": "quiz", "difficulty": 1, "params": {"cat": cat, "qid": qid, "order": [2, 0, 1]}, "solution": [1]}
-			var ok: bool = bool(QuizGen.validate(spec_q)["ok"])
-			for lang in ["en", "ur"]:
-				var t: Dictionary = QuizGen.texts(spec_q, lang)
-				var a: Array = t["answers"]
-				if str(t["question"]).strip_edges() == "" or a.size() != 3 or a[0] == a[1] or a[1] == a[2] or a[0] == a[2]:
-					ok = false
-			if not ok:
-				bank_bad += 1
-				print("BANK_PROBLEM ", cat, ":", qid)
-	print("BANK questions=", bank_total, " problems=", bank_bad)
+		var checked: int = 0
+		var bad: int = 0
+		var skipped: int = 0
+		for t in QuizGen.templates(cat):
+			var size: int = int(t[1])
+			var ids: Array = range(size) if size <= 2000 else []
+			if ids.is_empty():
+				for k in 400:
+					ids.append(Deck.permute(size, k, 7))
+			for idx in ids:
+				var item: Dictionary = QuizGen.make(cat, str(t[0]), int(idx))
+				if item.is_empty():
+					skipped += 1
+					continue
+				checked += 1
+				var spec_q: Dictionary = QuizGen.build(cat, str(t[0]), int(idx), int(idx) * 31 + 5)
+				var ok: bool = bool(spec_q["valid"]) and bool(QuizGen.validate(JSON.parse_string(JSON.stringify(spec_q)))["ok"])
+				for lang in ["en", "ur"]:
+					var tx: Dictionary = QuizGen.texts(spec_q, lang)
+					var a: Array = tx["answers"]
+					if str(tx["question"]).strip_edges() == "" or a.size() != 3 or a[0] == a[1] or a[1] == a[2] or a[0] == a[2] or str(a[0]) == "" or str(a[1]) == "" or str(a[2]) == "":
+						ok = false
+				if not ok:
+					bad += 1
+					if bad < 10:
+						print("QUESTION_PROBLEM ", cat, " ", t[0], " ", idx, " ", item)
+		print("QUESTIONS ", cat, " total=", QuizGen.total(cat), " checked=", checked, " problems=", bad, " no_fair_question=", skipped)
+	# Known facts must come out right.
+	print("FACT surah_ayahs Al-Baqarah -> ", QuizGen.make("islam", "surah_ayahs", 1)["a"][0][0])
+	print("FACT surah_juz Ya-Sin -> ", QuizGen.make("islam", "surah_juz", 35)["a"][0][0])
+	print("FACT surah_name 114 -> ", QuizGen.make("islam", "surah_name", 113)["a"][0][0])
+	print("FACT hijri_after Ramadan -> ", QuizGen.make("islam", "hijri_after", 8)["a"][0][0])
+	print("FACT first3 [0,1,2] -> ", QuizGen.make("islam", "first3", 0)["a"][0][0])
+	var World = load("res://scripts/pcg/CountryData.gd")
+	var caps: Array = QuizGen._list("capital")
+	for ci in caps.size():
+		if str(World.COUNTRIES[int(caps[ci])][0]) == "PAK":
+			print("FACT capital Pakistan -> ", QuizGen.make("gk", "capital", ci)["a"][0][0])
+	# No repeats: 3,000 questions per section from one deck.
+	for cat in ["islam", "gk"]:
+		var state: Dictionary = {}
+		var seen: Dictionary = {}
+		var dup: int = 0
+		for n in 1500:
+			var q: Dictionary = Deck.next_question(state, cat, 123457, n % 3 == 0)
+			var key: String = "%s:%d" % [q["tpl"], q["idx"]]
+			if seen.has(key):
+				dup += 1
+			seen[key] = true
+			if n == 750:
+				state = JSON.parse_string(JSON.stringify(state))   # survives save / load
+		print("DECK ", cat, " questions=1500 repeats=", dup)
+	for level in range(1, 6):
+		var mbad: int = 0
+		for k in 600:
+			var ms: Dictionary = MathG.generate(Rng.derive(55, level, k), level)
+			if not bool(ms["valid"]) or not bool(MathG.validate(JSON.parse_string(JSON.stringify(ms)))["ok"]):
+				mbad += 1
+		print("MATH L", level, " 600 generated, problems=", mbad, " e.g. ", MathG.question_text(MathG.generate(level * 7, level)))
 	var quiz_ok: int = 0
-	for i in 500:
-		var m: Dictionary = MissionGen.generate_mission(Rng.derive(99, i, 1), 1 + i % 5)
+	for i in 300:
+		var sec: String = ["islam", "gk", "math"][i % 3]
+		var m: Dictionary = MissionGen.generate_section_box(sec, Rng.derive(99, i, 1), 1 + i % 5,
+			[Deck.next_question({}, "islam" if sec == "math" else sec, i, true), {"tpl": "bank", "idx": 1}, {"tpl": "bank", "idx": 2}])
 		if bool(m["valid"]) and bool(MissionGen.validate_mission(JSON.parse_string(JSON.stringify(m)))["ok"]) and (m["stages"] as Array).size() == 3:
 			quiz_ok += 1
-	print("QUIZ_MISSIONS 500 generated, valid=", quiz_ok)
+	print("SECTION_MISSIONS 300 generated, valid=", quiz_ok, " t=", Time.get_ticks_msec() / 1000)
 
 	var theme_holder: Control = Control.new()
 	theme_holder.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -82,58 +129,46 @@ func _ready() -> void:
 			print("VIEW_OK ", type_name, " L", level, " valid=", spec["valid"], " hint=", hint_text != "")
 	await get_tree().process_frame
 
+	theme_holder.queue_free()
 	var menu: Node = (load("res://scenes/MainMenu.tscn") as PackedScene).instantiate()
 	add_child(menu)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	print("MENU_OK children=", menu.get_child_count())
+	print("MENU_OK children=", menu.get_child_count(), " t=", Time.get_ticks_msec() / 1000)
 	menu.queue_free()
 
-	for round_index in 6:
-		GameState.start_mission(Missions.next_endless(), "endless")
-		var game: Node = (load("res://scenes/Game.tscn") as PackedScene).instantiate()
-		add_child(game)
+	# Play 11 Islamic boxes (crosses into chapter 2) and 3 of the others (crosses into chapter 2) and check prizes.
+	for sec in ["islam", "gk", "math"]:
+		GameState.data["section_ref"] = sec
+		print("SEC_BEGIN ", sec)
+		var csc: Node = (load("res://scenes/Chapters.tscn") as PackedScene).instantiate()
+		add_child(csc)
 		await get_tree().process_frame
-		await get_tree().process_frame
-		var stages: int = (GameState.data["current_mission"]["stages"] as Array).size()
-		game._on_hint()
-		for s in stages:
-			game._on_stage_solved()
-			await get_tree().create_timer(0.9).timeout
-		print("GAME_OK round=", round_index + 1, " stages=", stages, " finished=", game._finished,
-			" rating=", GameState.data["rating"], " solved=", GameState.data["stats"]["solved"])
-		game.queue_free()
-		await get_tree().process_frame
-
-	# Chapters: play 8 boxes of chapter 1 (unlocks chapter 2), then open every extra screen.
-	for box_index in 8:
-		Missions.start_chapter(1, box_index)
-		var cgame: Node = (load("res://scenes/Game.tscn") as PackedScene).instantiate()
-		add_child(cgame)
-		await get_tree().process_frame
-		var cstages: int = (GameState.data["current_mission"]["stages"] as Array).size()
-		for s in cstages:
-			cgame._on_stage_solved()
-			await get_tree().create_timer(0.9).timeout
-		cgame.queue_free()
-		await get_tree().process_frame
-	print("CHAPTER_OK done=", Missions.chapter_done(1).size(), " ch2_unlocked=", Missions.is_chapter_unlocked(2),
-		" ch3_unlocked=", Missions.is_chapter_unlocked(3), " hints=", Missions.hint_tokens(),
-		" achievements=", GameState.data["achievements"], " artifacts=", (GameState.data["inventory"]["artifacts"] as Array).size())
-	for chapter_id in range(1, 6):
-		for box_index in 10:
-			if not bool(Missions.chapter_mission(chapter_id, box_index)["valid"]):
-				print("CHAPTER_INVALID ", chapter_id, " ", box_index)
-	print("CHAPTER_MISSIONS_CHECKED 50")
-	var chapters_scene: Node = (load("res://scenes/Chapters.tscn") as PackedScene).instantiate()
-	add_child(chapters_scene)
-	await get_tree().process_frame
-	chapters_scene._open(1)
-	await get_tree().process_frame
-	chapters_scene.queue_free()
+		csc.queue_free()
+		var count_boxes: int = 11 if sec == "islam" else 3
+		print("SEC_CHAPTERS_SHOWN ", sec)
+		for box_index in count_boxes:
+			Missions.start_section(sec)
+			print("SEC_BOX ", sec, " ", box_index)
+			var sgame: Node = (load("res://scenes/Game.tscn") as PackedScene).instantiate()
+			add_child(sgame)
+			await get_tree().process_frame
+			if box_index == 0:
+				sgame._on_hint()
+			var sst: int = (GameState.data["current_mission"]["stages"] as Array).size()
+			for s in sst:
+				sgame._on_stage_solved()
+				await get_tree().create_timer(0.2).timeout
+			if box_index == count_boxes - 1:
+				print("GAME_OK section=", sec, " finished=", sgame._finished, " level=", Missions.section_level(sec))
+			sgame.queue_free()
+			await get_tree().process_frame
+		print("SECTION_OK ", sec, " boxes=", Missions.section_boxes(sec), " chapter=", Missions.section_chapter(sec))
+	print("REWARDS_OK won=", Missions.rewards_won(), " of ", Content.rewards().size(), " solved=", GameState.data["stats"]["solved"],
+		" achievements=", GameState.data["achievements"])
 	for lang_code in ["en", "ur"]:
 		GameState.set_lang(lang_code)
-		for page_name in ["achievements", "journal", "inventory"]:
+		for page_name in ["achievements", "rewards"]:
 			GameState.page = page_name
 			var page: Node = (load("res://scenes/Pages.tscn") as PackedScene).instantiate()
 			add_child(page)
@@ -207,7 +242,7 @@ func _ready() -> void:
 		await get_tree().process_frame
 		settings_page.queue_free()
 	GameState.data["settings"]["quality"] = "low"
-	Missions.start_chapter(1, 9)
+	Missions.start_section("gk")
 	var low_game: Node = (load("res://scenes/Game.tscn") as PackedScene).instantiate()
 	add_child(low_game)
 	await get_tree().process_frame
@@ -215,6 +250,6 @@ func _ready() -> void:
 	GameState.data["settings"]["quality"] = "high"
 	print("SETTINGS_OK")
 	GameState.set_lang("ur")
-	print("LOC_UR ", Loc.t("stage", [1, Loc.t("d3"), 1, 2]))
+	print("LOC_UR ", Loc.t("stage_section", [1, 2, 10, 1, 3]))
 	GameState.set_lang("en")
 	print("RUNNER_DONE")

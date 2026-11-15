@@ -142,7 +142,11 @@ func _load_stage() -> void:
 	var spec: Dictionary = _stages[_stage]
 	var level_name: String = Loc.t("d%d" % int(_mission["difficulty"]))
 	var mode: String = str(GameState.data["mode"])
-	if mode == "chapter":
+	if mode == "section":
+		var sec: String = str(_mission.get("section", "islam"))
+		var boxes: int = Missions.section_boxes(sec)
+		_stage_label.text = Loc.t("stage_section", [Missions.section_chapter(sec), boxes % Content.BOXES_PER_CHAPTER + 1, Content.BOXES_PER_CHAPTER, _stage + 1, _stages.size()])
+	elif mode == "chapter":
 		var ref: Array = GameState.data["chapter_ref"]
 		_stage_label.text = Loc.t("stage_chapter", [int(ref[0]), int(ref[1]) + 1, level_name, _stage + 1, _stages.size()])
 	elif mode == "daily":
@@ -216,6 +220,10 @@ func _finish() -> void:
 		for ach in Content.ACHIEVEMENTS:
 			if str(ach["id"]) == str(id):
 				_holder.add_child(Ui.label(Loc.t("ach_new", [str(ach.get(GameState.lang(), ach["en"]))]), 36, Ui.GOLD))
+	if int(result.get("new_reward", -1)) >= 0:
+		Fx.play("award")
+		var prize: Dictionary = Content.rewards()[int(result["new_reward"])]
+		_holder.add_child(Ui.label(Loc.t("reward_new", [str(prize.get(GameState.lang(), prize["en"]))]), 38, Ui.GOLD))
 	if Ads.rewarded_available():
 		var reward_btn: Button = Ui.button(Loc.t("ad_reward", [Ads.REWARD_HINTS]))
 		reward_btn.pressed.connect(func() -> void:
@@ -225,7 +233,14 @@ func _finish() -> void:
 		Ads.reward_granted.connect(func(_amount: int) -> void:
 			if is_inside_tree():
 				_hint_btn.text = Loc.t("hint_count", [Missions.hint_tokens()]), CONNECT_ONE_SHOT)
-	if mode == "endless":
+	if mode == "section":
+		var next_sec: Button = Ui.button(Loc.t("next_box"))
+		next_sec.pressed.connect(_next_section_box)
+		_holder.add_child(next_sec)
+		var sec_btn: Button = Ui.button(Loc.t("all_chapters"))
+		sec_btn.pressed.connect(func() -> void: Fx.go("res://scenes/Chapters.tscn"))
+		_holder.add_child(sec_btn)
+	elif mode == "endless":
 		var next_btn: Button = Ui.button(Loc.t("next_box"))
 		next_btn.pressed.connect(_next_box)
 		_holder.add_child(next_btn)
@@ -247,6 +262,13 @@ func _next_box() -> void:
 	# An interstitial may appear here, between boxes, and nowhere else.
 	Ads.maybe_interstitial(func() -> void:
 		GameState.start_mission(Missions.next_endless(), "endless")
+		Fx.reload())
+
+
+func _next_section_box() -> void:
+	var sec: String = str(_mission.get("section", "islam"))
+	Ads.maybe_interstitial(func() -> void:
+		Missions.start_section(sec)
 		Fx.reload())
 
 

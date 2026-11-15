@@ -16,13 +16,16 @@ func _ready() -> void:
 
 func _defaults() -> Dictionary:
 	return {
-		"version": 2,
+		"version": 3,
 		"install_seed": 0,
 		"round": 0,
 		"rating": 1.0,
 		"recent_types": [],
 		"recent_signatures": [],
 		"recent_questions": [],
+		"sections": {"islam": {"boxes": 0, "deck": {}}, "gk": {"boxes": 0, "deck": {}}, "math": {"boxes": 0, "deck": {}}},
+		"section_ref": "islam",
+		"rewards_won": 0,
 		"current_mission": null,
 		"current_stage": 0,
 		"mission_time": 0.0,
@@ -68,18 +71,25 @@ func repair() -> void:
 	var defaults: Dictionary = _defaults()
 	# Version 2 switched the default locks to easy questions: drop an unfinished
 	# box from the older save so the player starts with the new question boxes.
-	if int(data.get("version", 1)) < 2:
+	# Version 3 = separate question sections: an unfinished older box is dropped once.
+	if int(data.get("version", 1)) < 3:
 		data["current_mission"] = null
-		data["version"] = 2
+		data["version"] = 3
 	for k in defaults.keys():
 		if not data.has(k):
 			data[k] = defaults[k]
-	for k in ["stats", "inventory", "settings", "online", "purchases", "ads"]:
+	for k in ["stats", "inventory", "settings", "online", "purchases", "ads", "sections"]:
 		if typeof(data.get(k)) != TYPE_DICTIONARY:
 			data[k] = defaults[k]
 		for sub_key in (defaults[k] as Dictionary).keys():
 			if not (data[k] as Dictionary).has(sub_key):
 				data[k][sub_key] = defaults[k][sub_key]
+	for sec in (data["sections"] as Dictionary).keys():
+		if typeof(data["sections"][sec]) != TYPE_DICTIONARY:
+			data["sections"][sec] = {"boxes": 0, "deck": {}}
+		for sub_key in ["boxes", "deck"]:
+			if not (data["sections"][sec] as Dictionary).has(sub_key):
+				data["sections"][sec][sub_key] = 0 if sub_key == "boxes" else {}
 
 
 func save_game() -> void:

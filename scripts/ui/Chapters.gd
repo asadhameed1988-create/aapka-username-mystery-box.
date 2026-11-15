@@ -1,17 +1,22 @@
 extends Control
-## Chapter selection: list of chapters, then the 10 boxes of the chosen chapter.
+## Chapters of one question section (GameState.data["section_ref"]).
+## Chapters never end: each has 10 boxes; finished chapters show a tick, the current
+## one has a Play button, the next ones are shown locked.
 
 const Ui = preload("res://scripts/ui/UiKit.gd")
 const Content = preload("res://scripts/core/Content.gd")
+const QuizGen = preload("res://scripts/pcg/QuizGenerator.gd")
+const SymbolIcon = preload("res://scripts/ui/SymbolIcon.gd")
+
+const LOCKED_SHOWN := 2
 
 var _box: VBoxContainer
-var _open_chapter: int = 0   # 0 = chapter list
 
 
 func _ready() -> void:
 	theme = Ui.make_theme()
 	get_tree().quit_on_go_back = false
-	Ui.background(self, "res://assets/bg/bg_main_menu.jpg", 0.55)
+	Ui.background(self, "res://assets/bg/bg_house_of_wisdom.jpg", 0.6)
 	var margin: MarginContainer = MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
@@ -24,11 +29,7 @@ func _ready() -> void:
 	_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_box.add_theme_constant_override("separation", 20)
 	scroll.add_child(_box)
-	var ref: Array = GameState.data.get("chapter_ref", [])
-	if GameState.open_chapter_on_return and ref.size() == 2:
-		_open_chapter = int(ref[0])
-	GameState.open_chapter_on_return = false
-	_rebuild()
+	_build()
 
 
 func _notification(what: int) -> void:
@@ -36,71 +37,69 @@ func _notification(what: int) -> void:
 		_back()
 
 
-func _rebuild() -> void:
-	for child in _box.get_children():
-		child.queue_free()
+static func section_def(id: String) -> Dictionary:
+	for s in Content.SECTIONS:
+		if str(s["id"]) == id:
+			return s
+	return Content.SECTIONS[0]
+
+
+func _build() -> void:
+	var sec_id: String = str(GameState.data.get("section_ref", "islam"))
+	var sec: Dictionary = section_def(sec_id)
+	var ur: bool = GameState.lang() == "ur"
 	var back: Button = Ui.button(Loc.t("back"))
 	back.pressed.connect(_back)
 	_box.add_child(back)
-	if _open_chapter == 0:
-		_build_list()
+	var icon = SymbolIcon.new()
+	icon.custom_minimum_size = Vector2(0, 170)
+	icon.symbol_id = int(sec["symbol"])
+	_box.add_child(icon)
+	_box.add_child(Ui.label(str(sec["ur"] if ur else sec["en"]), 64, Ui.GOLD))
+	_box.add_child(Ui.label(str(sec["ur_note"] if ur else sec["en_note"]), 32, Ui.TEXT))
+	if sec_id == "math":
+		_box.add_child(Ui.label(Loc.t("sec_math_count"), 28, Ui.MUTED))
 	else:
-		_build_boxes()
-
-
-func _chapter_name(chapter: Dictionary) -> String:
-	return str(chapter.get(GameState.lang(), chapter["en"]))
-
-
-func _build_list() -> void:
-	_box.add_child(Ui.label(Loc.t("chapters"), 64, Ui.GOLD))
-	for chapter in Content.CHAPTERS:
-		var id: int = int(chapter["id"])
-		var done: int = Missions.chapter_done(id).size()
-		var b: Button = Ui.button("%s\n%s" % [_chapter_name(chapter), Loc.t("chapter_progress", [done, Content.BOXES_PER_CHAPTER])])
-		b.custom_minimum_size = Vector2(0, 170)
-		if Missions.is_chapter_unlocked(id):
-			b.pressed.connect(_open.bind(id))
-		else:
+		_box.add_child(Ui.label(Loc.t("sec_question_count", [_grouped(QuizGen.total(sec_id))]), 28, Ui.MUTED))
+	var done: int = Missions.section_boxes(sec_id)
+	var current: int = Missions.section_chapter(sec_id)
+	_box.add_child(Ui.label(Loc.t("sec_boxes_done", [done]), 34, Ui.TEXT))
+	if GameState.has_mission() and str(GameState.data["mode"]) == "section" and str(GameState.data.get("section_ref", "")) == sec_id:
+		var cont: Button = Ui.button(Loc.t("continue"))
+		cont.pressed.connect(func() -> void: Fx.go("res://scenes/Game.tscn"))
+		_box.add_child(cont)
+	for ch in range(current + LOCKED_SHOWN, 0, -1):
+		var b: Button = Ui.button("")
+		b.custom_minimum_size = Vector2(0, 150)
+		if ch < current:
+			b.text = "%s\n%s" % [Loc.t("chapter_n", [ch]), Loc.t("chapter_complete")]
+			b.add_theme_color_override("font_color", Ui.GOOD)
 			b.disabled = true
-			b.text = "%s\n%s" % [_chapter_name(chapter), Loc.t("chapter_locked", [Content.UNLOCK_NEEDED])]
+		elif ch == current:
+			var in_chapter: int = done % Content.BOXES_PER_CHAPTER
+			b.text = "%s\n%s" % [Loc.t("chapter_n", [ch]), Loc.t("chapter_play", [in_chapter + 1, Content.BOXES_PER_CHAPTER])]
+			b.pressed.connect(_play.bind(sec_id))
+		else:
+			b.text = "%s\n%s" % [Loc.t("chapter_n", [ch]), Loc.t("chapter_locked_next")]
+			b.disabled = true
 		_box.add_child(b)
 
 
-func _build_boxes() -> void:
-	var chapter: Dictionary = Content.chapter(_open_chapter)
-	_box.add_child(Ui.label(_chapter_name(chapter), 52, Ui.GOLD))
-	var done: int = Missions.chapter_done(_open_chapter).size()
-	_box.add_child(Ui.label(Loc.t("chapter_progress", [done, Content.BOXES_PER_CHAPTER]), 34, Ui.TEXT))
-	var grid: GridContainer = GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 20)
-	grid.add_theme_constant_override("v_separation", 20)
-	for i in Content.BOXES_PER_CHAPTER:
-		var level: int = int((chapter["levels"] as Array)[i])
-		var b: Button = Ui.button("%s\n%s" % [Loc.t("box_number", [i + 1]), Loc.t("d%d" % level)])
-		b.custom_minimum_size = Vector2(0, 170)
-		if Missions.is_box_done(_open_chapter, i):
-			b.add_theme_color_override("font_color", Ui.GOOD)
-			b.text += "\n" + Loc.t("box_done")
-		b.pressed.connect(_play.bind(i))
-		grid.add_child(b)
-	_box.add_child(grid)
+## 722,000 -> "722,000"
+static func _grouped(n: int) -> String:
+	var s: String = str(n)
+	var out: String = ""
+	while s.length() > 3:
+		out = "," + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return s + out
 
 
-func _open(chapter_id: int) -> void:
-	_open_chapter = chapter_id
-	_rebuild()
-
-
-func _play(index: int) -> void:
-	Missions.start_chapter(_open_chapter, index)
+func _play(sec_id: String) -> void:
+	if not (GameState.has_mission() and str(GameState.data["mode"]) == "section" and str(GameState.data.get("section_ref", "")) == sec_id):
+		Missions.start_section(sec_id)
 	Fx.go("res://scenes/Game.tscn")
 
 
 func _back() -> void:
-	if _open_chapter != 0:
-		_open_chapter = 0
-		_rebuild()
-		return
 	Fx.go("res://scenes/MainMenu.tscn")

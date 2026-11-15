@@ -39,8 +39,8 @@ func _ready() -> void:
 		_build_profile()
 	elif GameState.page == "journal":
 		_build_journal()
-	elif GameState.page == "inventory":
-		_build_inventory()
+	elif GameState.page == "rewards":
+		_build_rewards()
 	else:
 		_build_achievements()
 
@@ -76,7 +76,8 @@ func _build_achievements() -> void:
 		Loc.t("stat_no_hint", [int(stats["no_hint"])]),
 		Loc.t("stat_best", [Ui.format_time(float(stats["best_time"]))]),
 		Loc.t("stat_average", [Ui.format_time(average)]),
-		Loc.t("stat_types", [Missions.stat("types"), 13]),
+		Loc.t("stat_sections", [Missions.section_boxes("islam"), Missions.section_boxes("gk"), Missions.section_boxes("math")]),
+		Loc.t("rewards_count", [Missions.rewards_won(), Content.rewards().size()]),
 		Loc.t("stat_daily", [int(stats["daily_streak"]), int(stats["daily_best"])]),
 	])
 	_box.add_child(Ui.label("\n".join(lines), 34, Ui.TEXT))
@@ -107,8 +108,9 @@ func _build_journal() -> void:
 			_box.add_child(_left(Loc.t("journal_locked", [int(entry["need"]), chapter_name]), 32, Ui.MUTED))
 
 
-func _build_inventory() -> void:
-	_box.add_child(Ui.label(Loc.t("inventory"), 64, Ui.GOLD))
+## Hint tokens, rewarded ad and the store (shown at the end of Settings).
+func _build_hints_and_store() -> void:
+	_box.add_child(Ui.label(Loc.t("hints_title"), 44, Ui.GOLD))
 	_box.add_child(Ui.label(Loc.t("inv_hints", [Missions.hint_tokens(), Missions.MAX_HINT_TOKENS]), 40, Ui.TEXT))
 	_box.add_child(Ui.label(Loc.t("inv_hints_how"), 30, Ui.MUTED))
 	if Ads.rewarded_available():
@@ -136,24 +138,49 @@ func _build_inventory() -> void:
 				_reload())
 	else:
 		_box.add_child(Ui.label(Loc.t("store_unavailable"), 30, Ui.MUTED))
-	var artifacts: Array = GameState.data["inventory"]["artifacts"]
-	_box.add_child(Ui.label(Loc.t("inv_artifacts", [artifacts.size(), Content.CHAPTERS.size() * Content.BOXES_PER_CHAPTER]), 40, Ui.GOLD))
-	if artifacts.is_empty():
-		_box.add_child(Ui.label(Loc.t("inv_empty"), 32, Ui.MUTED))
-		return
+
+
+const TIER_TINT := [Color(0.88, 0.58, 0.36), Color(0.86, 0.90, 0.97), Color(1.0, 0.84, 0.38)]
+
+
+## Prizes: one for every few boxes; won ones in colour, the rest dimmed with the box count.
+func _build_rewards() -> void:
+	var all: Array = Content.rewards()
+	var won: int = Missions.rewards_won()
+	_box.add_child(Ui.label(Loc.t("rewards_title"), 64, Ui.GOLD))
+	_box.add_child(Ui.label(Loc.t("rewards_count", [won, all.size()]), 38, Ui.TEXT))
+	_box.add_child(Ui.label(Loc.t("rewards_how", [Content.BOXES_PER_REWARD]), 30, Ui.MUTED))
 	var grid: GridContainer = GridContainer.new()
-	grid.columns = 5
-	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	grid.add_theme_constant_override("h_separation", 14)
-	grid.add_theme_constant_override("v_separation", 14)
-	for item in artifacts:
-		var parts: PackedStringArray = str(item).split("-")
+	grid.columns = 3
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 22)
+	for i in all.size():
+		var prize: Dictionary = all[i]
 		var cell: VBoxContainer = VBoxContainer.new()
-		var icon = SymbolIcon.new()
-		icon.custom_minimum_size = Vector2(150, 150)
-		icon.symbol_id = (int(parts[0]) * 3 + int(parts[1])) % 8
-		cell.add_child(icon)
-		cell.add_child(Ui.label("%s.%d" % [parts[0], int(parts[1]) + 1], 26, Ui.MUTED))
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var pic: Control
+		if str(prize["kind"]) == "seal":
+			var icon = SymbolIcon.new()
+			icon.symbol_id = int(prize["symbol"])
+			icon.self_modulate = TIER_TINT[int(prize["tier"])]
+			pic = icon
+		else:
+			var tr: TextureRect = TextureRect.new()
+			tr.texture = Ui.tex(str(prize["path"]))
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			pic = tr
+		pic.custom_minimum_size = Vector2(0, 220)
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(pic)
+		var name_label: Label = Ui.label(str(prize.get(GameState.lang(), prize["en"])), 26, Ui.TEXT)
+		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cell.add_child(name_label)
+		if i >= won:
+			pic.modulate = Color(1, 1, 1, 0.18)
+			name_label.text = Loc.t("rewards_locked", [(i + 1) * Content.BOXES_PER_REWARD])
+			name_label.add_theme_color_override("font_color", Ui.MUTED)
 		grid.add_child(cell)
 	_box.add_child(grid)
 
@@ -173,14 +200,6 @@ func _toggle(text_on: String, text_off: String, key: String) -> void:
 func _build_settings() -> void:
 	_box.add_child(Ui.label(Loc.t("settings"), 64, Ui.GOLD))
 	var settings: Dictionary = GameState.data["settings"]
-	var quiz_mode: bool = str(settings.get("locks", "quiz")) != "puzzles"
-	var locks: Button = Ui.button(Loc.t("locks_quiz") if quiz_mode else Loc.t("locks_puzzles"))
-	locks.pressed.connect(func() -> void:
-		settings["locks"] = "puzzles" if quiz_mode else "quiz"
-		GameState.save_game()
-		_reload())
-	_box.add_child(locks)
-	_box.add_child(Ui.label(Loc.t("locks_note"), 30, Ui.MUTED))
 	_toggle("sound_on", "sound_off", "sound")
 	_toggle("music_on", "music_off", "music")
 	var high: bool = str(settings.get("quality", "high")) == "high"
@@ -196,6 +215,7 @@ func _build_settings() -> void:
 		GameState.set_lang("ur" if GameState.lang() == "en" else "en")
 		_reload())
 	_box.add_child(lang)
+	_build_hints_and_store()
 
 
 func _online_problem() -> String:

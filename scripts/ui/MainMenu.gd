@@ -2,6 +2,7 @@ extends Control
 ## Main menu. Features that are not built yet are shown disabled with their phase number.
 
 const Ui = preload("res://scripts/ui/UiKit.gd")
+const Content = preload("res://scripts/core/Content.gd")
 
 
 func _ready() -> void:
@@ -39,13 +40,17 @@ func _ready() -> void:
 		box.add_child(Ui.label(Loc.t("placeholder"), 26, Ui.BAD))
 
 	var stats: Dictionary = GameState.data["stats"]
-	var level_name: String = Loc.t("d%d" % Missions.current_difficulty())
-	box.add_child(Ui.label(Loc.t("stats", [int(stats["solved"]), level_name]), 32, Ui.TEXT))
+	box.add_child(Ui.label(Loc.t("stats_boxes", [int(stats["solved"])]), 32, Ui.TEXT))
 
 	if GameState.has_mission():
 		_add(box, Loc.t("continue"), _on_continue)
-	_add(box, Loc.t("chapters"), _on_chapters)
-	_add(box, Loc.t("endless"), _on_endless)
+	var ur: bool = GameState.lang() == "ur"
+	for sec in Content.SECTIONS:
+		var sec_id: String = str(sec["id"])
+		var b: Button = _add(box, "%s\n%s" % [str(sec["ur"] if ur else sec["en"]),
+			Loc.t("chapter_n", [Missions.section_chapter(sec_id)])], _on_section.bind(sec_id))
+		b.custom_minimum_size = Vector2(0, 150)
+		b.add_theme_color_override("font_color", Ui.GOLD)
 	if str(GameState.data["daily_done"]) == Missions.today_key():
 		_add(box, Loc.t("daily_done"), _on_daily).disabled = true
 	else:
@@ -53,8 +58,7 @@ func _ready() -> void:
 	_add(box, Loc.t("weekly"), _on_page.bind("weekly"))
 	_add(box, Loc.t("leaderboards"), _on_page.bind("leaderboard"))
 	_add(box, Loc.t("achievements"), _on_page.bind("achievements"))
-	_add(box, Loc.t("journal"), _on_page.bind("journal"))
-	_add(box, Loc.t("inventory"), _on_page.bind("inventory"))
+	_add(box, Loc.t("rewards_title_n", [Missions.rewards_won(), Content.rewards().size()]), _on_page.bind("rewards"))
 	_add(box, Loc.t("settings"), _on_page.bind("settings"))
 	if OS.is_debug_build():
 		_add(box, Loc.t("selftest"), _on_selftest)      # developer tool, hidden in release builds
@@ -81,7 +85,8 @@ func _noop() -> void:
 	pass
 
 
-func _on_chapters() -> void:
+func _on_section(sec_id: String) -> void:
+	GameState.data["section_ref"] = sec_id
 	Fx.go("res://scenes/Chapters.tscn")
 
 

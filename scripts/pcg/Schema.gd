@@ -21,8 +21,8 @@ const SPECS := {
 	"gears": {"params": {"teeth": "ints", "cranks": "int_rows3:2", "start": "ints"}, "solution": "int_rows:2"},
 	"colours": {"params": {"slots": "int", "colours": "int", "clues": "dicts"}, "solution": "ints"},
 	"cipher": {"params": {"symbols": "ints", "range": "int", "clues": "dicts"}, "solution": "ints"},
-	"quiz": {"params": {"cat": "str", "qid": "int", "order": "ints"}, "solution": "ints"},
-	"math": {"params": {"a": "int", "b": "int", "op": "str", "options": "ints"}, "solution": "ints"},
+	"quiz": {"params": {"cat": "str", "tpl": "str", "idx": "int", "order": "ints"}, "solution": "ints"},
+	"math": {"params": {"kind": "str", "nums": "ints", "options": "ints"}, "solution": "ints"},
 	"mirrors": {"params": {"w": "int", "h": "int", "entry_row": "int", "mirrors": "int_rows:2", "target": "int"}, "solution": "ints"},
 }
 

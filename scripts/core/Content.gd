@@ -19,24 +19,69 @@ const CHAPTERS := [
 		"levels": [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]},
 ]
 
+## The three question sections. Each has endless chapters of BOXES_PER_CHAPTER boxes.
+const SECTIONS := [
+	{"id": "islam", "en": "Islamic Knowledge", "ur": "اسلامی معلومات", "symbol": 0,
+		"en_note": "Quran, Seerah and Fiqh Hanafi", "ur_note": "قرآن، سیرت اور فقہ حنفی"},
+	{"id": "gk", "en": "General Knowledge", "ur": "معلوماتِ عامہ", "symbol": 3,
+		"en_note": "Pakistan and the countries of the world", "ur_note": "پاکستان اور دنیا کے ممالک"},
+	{"id": "math", "en": "Maths", "ur": "حساب", "symbol": 5,
+		"en_note": "Sums and equations, harder each chapter", "ur_note": "سوالات اور مساوات، ہر باب میں مشکل"},
+]
+
+## Prizes: one every BOXES_PER_REWARD boxes (all sections together).
+const BOXES_PER_REWARD := 5
+const TIERS := [["Bronze", "کانسی"], ["Silver", "چاندی"], ["Gold", "سونا"]]
+const PICTURES := [
+	{"path": "res://assets/logo/logo_mystery_box.png", "en": "Mystery Box Emblem", "ur": "صندوق کا نشان"},
+	{"path": "res://assets/bg/bg_house_of_wisdom.jpg", "en": "House of Wisdom", "ur": "بیت الحکمت"},
+	{"path": "res://assets/tex/tex_walnut_inlay.jpg", "en": "Walnut Inlay", "ur": "اخروٹ کی لکڑی کا جڑاؤ"},
+	{"path": "res://assets/bg/bg_main_menu.jpg", "en": "The Mystery Hall", "ur": "اسرار کا ہال"},
+	{"path": "res://assets/tex/tex_brass_engraved.jpg", "en": "Engraved Brass", "ur": "کندہ پیتل"},
+	{"path": "res://assets/ui/ring_plate.png", "en": "Ring Plate", "ur": "حلقہ دار تختی"},
+	{"path": "res://assets/splash/splash_portrait.png", "en": "The Golden Box", "ur": "سنہری صندوق"},
+]
+
+
+## Every prize in the order it is won: seals (8 symbols x 3 metals) with a picture
+## after every fourth seal.
+static func rewards() -> Array:
+	var out: Array = []
+	var pic: int = 0
+	for tier in TIERS.size():
+		for sym in 8:
+			out.append({"kind": "seal", "symbol": sym, "tier": tier,
+				"en": "Seal %d (%s)" % [sym + 1, TIERS[tier][0]], "ur": "مہر %d (%s)" % [sym + 1, TIERS[tier][1]]})
+			if out.size() % 5 == 4 and pic < PICTURES.size():
+				var p: Dictionary = PICTURES[pic]
+				out.append({"kind": "picture", "path": p["path"], "en": p["en"], "ur": p["ur"]})
+				pic += 1
+	while pic < PICTURES.size():
+		var p2: Dictionary = PICTURES[pic]
+		out.append({"kind": "picture", "path": p2["path"], "en": p2["en"], "ur": p2["ur"]})
+		pic += 1
+	return out
+
+
 ## "stat" names are resolved by MissionService.stat().
 const ACHIEVEMENTS := [
 	{"id": "first_box", "stat": "solved", "need": 1, "en": "First Lock", "ur": "پہلا تالا", "desc": "ach_solved"},
 	{"id": "boxes_10", "stat": "solved", "need": 10, "en": "Apprentice", "ur": "شاگرد", "desc": "ach_solved"},
 	{"id": "boxes_50", "stat": "solved", "need": 50, "en": "Journeyman", "ur": "کاریگر", "desc": "ach_solved"},
 	{"id": "boxes_100", "stat": "solved", "need": 100, "en": "Master Locksmith", "ur": "استاد قفل ساز", "desc": "ach_solved"},
+	{"id": "boxes_500", "stat": "solved", "need": 500, "en": "Keeper of Keys", "ur": "چابیوں کا امین", "desc": "ach_solved"},
+	{"id": "islam_10", "stat": "sec:islam", "need": 10, "en": "Seeker of Knowledge", "ur": "طالبِ علم", "desc": "ach_sec_islam"},
+	{"id": "islam_50", "stat": "sec:islam", "need": 50, "en": "Scholar", "ur": "عالم", "desc": "ach_sec_islam"},
+	{"id": "gk_10", "stat": "sec:gk", "need": 10, "en": "Traveller", "ur": "مسافر", "desc": "ach_sec_gk"},
+	{"id": "gk_50", "stat": "sec:gk", "need": 50, "en": "Geographer", "ur": "جغرافیہ دان", "desc": "ach_sec_gk"},
+	{"id": "math_10", "stat": "sec:math", "need": 10, "en": "Counter", "ur": "گنتی کار", "desc": "ach_sec_math"},
+	{"id": "math_50", "stat": "sec:math", "need": 50, "en": "Mathematician", "ur": "ریاضی دان", "desc": "ach_sec_math"},
 	{"id": "clean_5", "stat": "no_hint", "need": 5, "en": "Clear Mind", "ur": "صاف ذہن", "desc": "ach_no_hint"},
 	{"id": "clean_25", "stat": "no_hint", "need": 25, "en": "Unaided", "ur": "بغیر مدد", "desc": "ach_no_hint"},
 	{"id": "swift", "stat": "fast", "need": 1, "en": "Swift Hands", "ur": "تیز ہاتھ", "desc": "ach_fast"},
-	{"id": "types_5", "stat": "types", "need": 5, "en": "Curious", "ur": "متجسس", "desc": "ach_types"},
-	{"id": "types_13", "stat": "types", "need": 13, "en": "Every Mechanism", "ur": "ہر مشین", "desc": "ach_types"},
+	{"id": "rewards_10", "stat": "rewards", "need": 10, "en": "Collector", "ur": "جمع کرنے والا", "desc": "ach_rewards"},
 	{"id": "daily_3", "stat": "daily_best", "need": 3, "en": "Three Days", "ur": "تین دن", "desc": "ach_daily"},
 	{"id": "daily_7", "stat": "daily_best", "need": 7, "en": "A Full Week", "ur": "پورا ہفتہ", "desc": "ach_daily"},
-	{"id": "chapter_1", "stat": "chapter:1", "need": 10, "en": "Scholar of Baghdad", "ur": "بغداد کا عالم", "desc": "ach_chapter"},
-	{"id": "chapter_2", "stat": "chapter:2", "need": 10, "en": "Craftsman of Damascus", "ur": "دمشق کا کاریگر", "desc": "ach_chapter"},
-	{"id": "chapter_3", "stat": "chapter:3", "need": 10, "en": "Librarian of Cordoba", "ur": "قرطبہ کا کتب دار", "desc": "ach_chapter"},
-	{"id": "chapter_4", "stat": "chapter:4", "need": 10, "en": "Merchant of Cairo", "ur": "قاہرہ کا تاجر", "desc": "ach_chapter"},
-	{"id": "chapter_5", "stat": "chapter:5", "need": 10, "en": "Astronomer of Samarkand", "ur": "سمرقند کا فلکیات دان", "desc": "ach_chapter"},
 ]
 
 ## A note opens when `need` boxes of its chapter are complete.

@@ -23,7 +23,7 @@ func setup(spec: Dictionary) -> void:
 	var question: String
 	var answers: Array = []
 	if str(spec["type"]) == "math":
-		heading = Loc.t("cat_math")
+		heading = Loc.t("find_x") if MathGen.is_equation(spec) else Loc.t("cat_math")
 		question = MathGen.question_text(spec)
 		for v in spec["params"]["options"]:
 			answers.append(str(int(v)))

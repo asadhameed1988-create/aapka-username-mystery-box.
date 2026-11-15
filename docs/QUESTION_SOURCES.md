@@ -1,7 +1,32 @@
-# Question bank – sources and review status
+# Questions – sources, counts and review status
 
-File: `scripts/pcg/QuestionBank.gd` (Islamic: 72 questions, General knowledge: 58 questions;
-maths questions are generated automatically without limit).
+Three sections, each with endless chapters of 10 boxes (3 questions per box):
+
+| Section | Different questions | Made from |
+|---|---|---|
+| Islamic knowledge | 722,169 | 72 hand-written (fiqh Hanafi, seerah) + Quran facts + Hijri months |
+| General knowledge | 2,360,512 | 58 hand-written (Pakistan) + facts about 193 countries |
+| Maths | unlimited | generated sums and equations, 5 levels (harder every 2 chapters) |
+
+No repeats: `scripts/pcg/QuestionDeck.gd` walks every template through a fixed shuffle,
+so a question comes back only after every question of its template has been asked.
+
+## Generated question templates
+Islamic (`QuizGenerator.gd`, data `QuranData.gd` = npm quran-meta 7.0.0, MIT, Hafs riwaya,
+114 surahs, 6236 ayahs; checked against known values such as Al-Baqarah 286 ayahs and
+Ya-Sin beginning in para 22):
+surah by number, number of a surah, ayah count, surah after / before, para (juz) where a
+surah begins, Hijri month after / by number, "which of three surahs comes first",
+"which has the most / fewest ayahs" (ties are skipped). Makki/Madani questions are NOT used
+because some surahs are classified differently by scholars.
+
+General knowledge (data `CountryData.gd` = npm world-countries 5.1.0, data under ODbL):
+capital of a country, country of a capital, continent (transcontinental countries skipped),
+land neighbour (only borders both countries list), landlocked country, largest / smallest
+of three by area (only when the winner is at least 20% bigger / smaller).
+193 UN member states; Israel is left out because Pakistan does not recognise it.
+Population questions are only in the hand-written bank (they change; census year is named).
+Regenerate the data with `tools/make_question_data.py`.
 
 Rules used when writing the questions
 - Only well-established facts. No disputed or controversial matters.

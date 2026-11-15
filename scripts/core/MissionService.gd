@@ -15,6 +15,53 @@ const MAX_HINT_TOKENS := 20
 
 
 const RECENT_QUESTIONS_KEPT := 60
+const QuestionDeck = preload("res://scripts/pcg/QuestionDeck.gd")
+
+
+# ---------------------------------------------------------------- sections
+
+func section_info(section: String) -> Dictionary:
+	return GameState.data["sections"][section]
+
+
+func section_boxes(section: String) -> int:
+	return int(section_info(section)["boxes"])
+
+
+## Chapter the player is in now (1-based): 10 boxes per chapter, chapters never end.
+func section_chapter(section: String) -> int:
+	return section_boxes(section) / Content.BOXES_PER_CHAPTER + 1
+
+
+## Maths gets harder every two chapters; questions sections stay at level 1.
+func section_level(section: String) -> int:
+	if section != "math":
+		return 1
+	return clampi(1 + (section_chapter(section) - 1) / 2, 1, 5)
+
+
+## Next box of a section. Questions come from the no-repeat deck and are taken now,
+## so even an unfinished box never gives the same questions again.
+func next_section_box(section: String) -> Dictionary:
+	var info: Dictionary = section_info(section)
+	var deck: Dictionary = info["deck"]
+	var picks: Array = []
+	if section != "math":
+		for q in 3:
+			picks.append(QuestionDeck.next_question(deck, section, int(GameState.data["install_seed"]), q == 0))
+	var box_no: int = section_boxes(section) + int(deck.get("started", 0)) + 1
+	deck["started"] = int(deck.get("started", 0)) + 1
+	var seed_value: int = Rng.derive(int(GameState.data["install_seed"]), box_no, ["islam", "gk", "math"].find(section) + 41)
+	return MissionGen.generate_section_box(section, seed_value, section_level(section), picks)
+
+
+func start_section(section: String) -> void:
+	GameState.data["section_ref"] = section
+	GameState.start_mission(next_section_box(section), "section")
+
+
+func rewards_won() -> int:
+	return int(GameState.data.get("rewards_won", 0))
 
 
 ## "quiz" (easy questions, default) or "puzzles" (mechanical locks), from Settings.
@@ -47,7 +94,7 @@ func next_endless() -> Dictionary:
 func daily() -> Dictionary:
 	var d: Dictionary = Time.get_date_dict_from_system()
 	var seed_value: int = int(d["year"]) * 10000 + int(d["month"]) * 100 + int(d["day"])
-	return MissionGen.generate_mission(seed_value, 2 if lock_mode() == "quiz" else 3, [], lock_mode())
+	return MissionGen.generate_mission(seed_value, 3, [], "quiz")
 
 
 func today_key() -> String:
@@ -104,6 +151,10 @@ func stat(stat_name: String) -> int:
 	var stats: Dictionary = GameState.data["stats"]
 	if stat_name.begins_with("chapter:"):
 		return chapter_done(int(stat_name.get_slice(":", 1))).size()
+	if stat_name.begins_with("sec:"):
+		return section_boxes(stat_name.get_slice(":", 1))
+	if stat_name == "rewards":
+		return rewards_won()
 	if stat_name == "types":
 		return (stats["by_type"] as Dictionary).size()
 	return int(stats.get(stat_name, 0))
@@ -169,6 +220,10 @@ func complete(mission: Dictionary, time_sec: float, hints: int) -> Dictionary:
 			weekly_done.append(server_id)
 			while weekly_done.size() > 40:
 				weekly_done.pop_front()
+	elif mode == "section":
+		var sec: String = str(mission.get("section", d.get("section_ref", "islam")))
+		if d["sections"].has(sec):
+			d["sections"][sec]["boxes"] = section_boxes(sec) + 1
 	elif mode == "chapter":
 		var ref: Array = d.get("chapter_ref", [1, 0])
 		var chapter_id: int = int(ref[0])
@@ -201,6 +256,12 @@ func complete(mission: Dictionary, time_sec: float, hints: int) -> Dictionary:
 	if float(stats["best_time"]) <= 0.0 or time_sec < float(stats["best_time"]):
 		stats["best_time"] = time_sec
 	add_hints(tokens)
+	# Prize every BOXES_PER_REWARD boxes, until every prize is won.
+	var new_reward: int = -1
+	var can_win: int = mini(Content.rewards().size(), int(stats["solved"]) / Content.BOXES_PER_REWARD)
+	if can_win > rewards_won():
+		new_reward = rewards_won()
+		d["rewards_won"] = rewards_won() + 1
 	var unlocked: Array = []
 	for ach in Content.ACHIEVEMENTS:
 		var id: String = str(ach["id"])
@@ -215,4 +276,4 @@ func complete(mission: Dictionary, time_sec: float, hints: int) -> Dictionary:
 	Ads.box_finished()
 	Analytics.track("box_complete", {"mode": mode, "difficulty": diff, "seconds": int(time_sec), "hints": hints})
 	Online.sync_progress()
-	return {"delta": delta, "rating": float(d["rating"]), "tokens": tokens, "new_achievements": unlocked}
+	return {"delta": delta, "rating": float(d["rating"]), "tokens": tokens, "new_achievements": unlocked, "new_reward": new_reward}
