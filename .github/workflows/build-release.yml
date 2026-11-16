@@ -75,9 +75,11 @@ jobs:
           echo "AdMob plugin: $URL"
           curl -fsSL "$URL" -o /tmp/admob.zip
           unzip -q -o /tmp/admob.zip -d /tmp/admob
-          SRC=$(dirname "$(find /tmp/admob -path '*addons/AdmobPlugin/plugin.cfg' | head -1)")
-          mkdir -p addons && rm -rf addons/AdmobPlugin && cp -a "$SRC" addons/AdmobPlugin
-          ls addons/AdmobPlugin
+          # Copy every addon folder in the archive (AdmobPlugin needs its shared GMPShared scripts too).
+          ZADDONS=$(dirname "$(dirname "$(find /tmp/admob -path '*addons/AdmobPlugin/plugin.cfg' | head -1)")")
+          mkdir -p addons && cp -a "$ZADDONS"/. addons/
+          ls addons addons/*
+          grep -rl "class_name GmpLogger" addons || { echo "::error::GmpLogger not found in the plugin archive"; exit 1; }
           # Test app id for now; the game itself decides real/test ad units (AdmobProvider.gd).
           REAL_ID=$(grep -oP 'const ADMOB_APP_ID := "\K[^"]*' scripts/monetize/AdmobProvider.gd || true)
           IS_REAL=false
@@ -127,7 +129,11 @@ jobs:
       - name: Export test APK with ads (Gradle)
         run: |
           mkdir -p build
-          /tmp/godot/godot --headless --path . --export-debug "Android APK (testing)" build/mystery_box_test.apk
+          /tmp/godot/godot --headless --path . --export-debug "Android APK (testing)" build/mystery_box_test.apk 2>&1 | tee /tmp/export.log
+          if grep -q "SCRIPT ERROR\|Failed to load script" /tmp/export.log; then
+            echo "::error::Script errors during export (see above)"; exit 1
+          fi
+          unzip -l build/mystery_box_test.apk | grep -i -c "google/android/gms/ads\|admob" || true
           ls -la build
           test -s build/mystery_box_test.apk
 
