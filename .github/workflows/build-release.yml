@@ -133,7 +133,9 @@ jobs:
           if grep -q "SCRIPT ERROR\|Failed to load script" /tmp/export.log; then
             echo "::error::Script errors during export (see above)"; exit 1
           fi
-          unzip -l build/mystery_box_test.apk | grep -i -c "google/android/gms/ads\|admob" || true
+          N_ADS=$(unzip -l build/mystery_box_test.apk | grep -i -c "gms/ads\|admob" || true)
+          echo "AdMob files in APK: $N_ADS"
+          [ "$N_ADS" -gt 0 ] || { echo "::error::AdMob is not in the APK"; exit 1; }
           ls -la build
           test -s build/mystery_box_test.apk
 
