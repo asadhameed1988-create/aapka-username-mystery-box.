@@ -73,3 +73,18 @@ Islamic question and answer in both English and Urdu. This review has NOT been d
 
 Population figures change; the questions say "about" and name the census year.
 Update the world-population and Pakistan-population questions after the next census or UN revision.
+
+## Fiqh of the four schools, choose-all questions and hadith (added 16 Nov 2026)
+- `scripts/pcg/FiqhData.gd`: 41 topics -> 126 questions, each labelled with its school
+  (Fiqh Hanafi / Shafi'i / Maliki / Hanbali, or "all four schools"); 9 choose-all questions;
+  21 hadith questions. Purification, prayer, fasting, zakat, nikah, talaq and iddah.
+  A school is left out of a topic when its relied-upon position is not clear-cut.
+- References shown after the answer: the school's main book (Quduri/Hidayah; Minhaj; Risalah;
+  Zad al-Mustaqni'/'Umdat al-Fiqh), al-Jaziri's comparative book, Quran references, and for
+  hadiths the Arabic text and English translation of Sahih al-Bukhari.
+- Hadith texts: `scripts/pcg/HadithData.gd`, generated from fawazahmed0/hadith-api (public domain,
+  docs/HADITH_DATA_LICENSE.txt). Numbers checked against the English text (e.g. 1 intentions,
+  8 five pillars, 172 dog and vessel, 756 Al-Fatiha, 5251 talaq during menses).
+- All questions exist in English, Urdu and Arabic; the player can switch the question language.
+- `docs/SCHOLAR_REVIEW.md` (made by tools/make_scholar_review.py) lists every fiqh and hadith
+  question with its answer for review by qualified scholars of each school. NOT reviewed yet.

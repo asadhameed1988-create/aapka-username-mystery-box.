@@ -297,9 +297,12 @@ func _summary_panel() -> Control:
 		var answer: String = ""
 		var ref: Dictionary = {}
 		if str(spec.get("type", "")) == "quiz":
-			var t: Dictionary = QuizGen.texts(spec, GameState.lang())
+			var t: Dictionary = QuizGen.texts(spec, QuizView.question_lang())
 			question = str(t["question"])
-			answer = str(t["answers"][int(spec["solution"][0])])
+			var right: PackedStringArray = []
+			for k in spec["solution"]:
+				right.append(str(t["answers"][int(k)]))
+			answer = "، ".join(right) if QuizView.question_lang() != "en" else ", ".join(right)
 			ref = QuizGen.reference_of(spec)
 		elif str(spec.get("type", "")) == "math":
 			question = MathGen.question_text(spec)

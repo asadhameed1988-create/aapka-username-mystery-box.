@@ -58,10 +58,13 @@ func _ready() -> void:
 				checked += 1
 				var spec_q: Dictionary = QuizGen.build(cat, str(t[0]), int(idx), int(idx) * 31 + 5)
 				var ok: bool = bool(spec_q["valid"]) and bool(QuizGen.validate(JSON.parse_string(JSON.stringify(spec_q)))["ok"])
-				for lang in ["en", "ur"]:
+				for lang in ["en", "ur", "ar"]:
 					var tx: Dictionary = QuizGen.texts(spec_q, lang)
 					var a: Array = tx["answers"]
-					if str(tx["question"]).strip_edges() == "" or a.size() != 3 or a[0] == a[1] or a[1] == a[2] or a[0] == a[2] or str(a[0]) == "" or str(a[1]) == "" or str(a[2]) == "":
+					var uniq: Dictionary = {}
+					for x in a:
+						uniq[str(x)] = true
+					if str(tx["question"]).strip_edges() == "" or a.size() < 3 or uniq.size() != a.size() or uniq.has(""):
 						ok = false
 				if not ok:
 					bad += 1
@@ -176,6 +179,30 @@ func _ready() -> void:
 				ref_count += 1
 	print("REFERENCES islam questions with a reference: ", ref_count)
 	print("REF example: ", QG.reference_of(QG.build("islam", "bank", 26, 1)))
+	var fiqh_n: int = QG.template_size("islam", "fiqh4")
+	var fiqh_ok: int = 0
+	for k in fiqh_n:
+		var fs: Dictionary = QG.build("islam", "fiqh4", k, k + 3)
+		if bool(fs["valid"]) and bool(QG.validate(JSON.parse_string(JSON.stringify(fs)))["ok"]) and not (QG.reference_of(fs)["ar"] as String).is_empty():
+			fiqh_ok += 1
+	print("FIQH four-school questions=", fiqh_n, " valid with reference=", fiqh_ok)
+	var multi_n: int = QG.template_size("islam", "fiqh_multi")
+	var multi_ok: int = 0
+	for k in multi_n:
+		var ms: Dictionary = QG.build("islam", "fiqh_multi", k, k + 9)
+		if bool(ms["valid"]) and QG.is_multi(ms) and bool(QG.validate(JSON.parse_string(JSON.stringify(ms)))["ok"]):
+			multi_ok += 1
+	print("MULTI choose-all questions=", multi_n, " valid=", multi_ok)
+	var had_n: int = QG.template_size("islam", "hadith")
+	var had_ok: int = 0
+	for k in had_n:
+		var hs: Dictionary = QG.build("islam", "hadith", k, k + 5)
+		var hr: Dictionary = QG.reference_of(hs)
+		if bool(hs["valid"]) and (hr.get("hadith", []) as Array).size() == 1 and str(hr["hadith"][0]["ar"]).length() > 20 and str(hr["hadith"][0]["en"]).length() > 20:
+			had_ok += 1
+	print("HADITH questions=", had_n, " with Arabic+English text=", had_ok)
+	print("FIQH example AR: ", QG.texts(QG.build("islam", "fiqh4", 0, 1), "ar"))
+	print("FIQH example UR: ", QG.texts(QG.build("islam", "fiqh4", 1, 1), "ur"))
 	print("REWARDS_OK won=", Missions.rewards_won(), " of ", Content.rewards().size(), " solved=", GameState.data["stats"]["solved"],
 		" achievements=", GameState.data["achievements"])
 	for lang_code in ["en", "ur"]:

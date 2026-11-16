@@ -13,8 +13,13 @@ const QURAN := {
 	"quran_37_102": [[37, 102, 107]], "quran_37_139": [[37, 139, 144]], "quran_4_163": [[4, 163, 163]],
 	"quran_5_46": [[5, 46, 46]], "quran_2_53": [[2, 53, 53]], "quran_33_40": [[33, 40, 40]],
 	"quran_62": [[62, 9, 9]], "quran_2_255": [[2, 255, 255]], "quran_12_2": [[12, 2, 2]],
-	"hanafi_wudu": [[5, 6, 6]],
+	"hanafi_wudu": [[5, 6, 6]], "quran_5_6": [[5, 6, 6]],
+	"quran_4_4": [[4, 4, 4]], "quran_4_3": [[4, 3, 3]], "quran_2_221": [[2, 221, 221]], "quran_60_10": [[60, 10, 10]],
+	"quran_2_228": [[2, 228, 228]], "quran_2_229": [[2, 229, 229]], "quran_2_230": [[2, 230, 230]],
+	"quran_2_234": [[2, 234, 234]], "quran_65_4": [[65, 4, 4]], "quran_33_49": [[33, 49, 49]], "quran_9_60": [[9, 60, 60]],
 }
+## Bank "src" keys that point at a hadith of Sahih al-Bukhari (its text is shown too).
+const HADITH_KEYS := {"hadith_pillars": 8, "bukhari_3": 3}
 
 ## key -> [Arabic, English, Urdu] for books.
 const BOOKS := {
@@ -75,6 +80,38 @@ static func surah_facts(num: int) -> Array:
 		"سورۃ %s: نمبر %d، آیات %d، پارہ %d سے شروع" % [surah_ar(num), num, ayahs, juz]]
 
 
+const Hadith = preload("res://scripts/pcg/HadithData.gd")
+
+
+## [ar, en, ur] line naming a Bukhari hadith.
+static func bukhari_line(num: int) -> Array:
+	return ["صحيح البخاري، الحديث %s" % ar_digits(num), "Sahih al-Bukhari, hadith %d" % num, "صحیح بخاری، حدیث %d" % num]
+
+
+## Full texts for the reference panel: [{"num", "ar", "en"}].
+static func hadith_texts(nums: Array) -> Array:
+	var out: Array = []
+	for n in nums:
+		if Hadith.BUKHARI.has(int(n)):
+			out.append({"num": int(n), "ar": str(Hadith.BUKHARI[int(n)][0]), "en": str(Hadith.BUKHARI[int(n)][1])})
+	return out
+
+
+## Reference from Quran keys, book lines and hadith numbers (any may be empty).
+static func combine(quran_keys: Array, books: Array, hadiths: Array) -> Dictionary:
+	var lines: Array = []
+	for k in quran_keys:
+		if QURAN.has(str(k)):
+			for r in QURAN[str(k)]:
+				lines.append(quran_ref(int(r[0]), int(r[1]), int(r[2])))
+	for n in hadiths:
+		lines.append(bukhari_line(int(n)))
+	lines.append_array(books)
+	var out: Dictionary = _join(lines)
+	out["hadith"] = hadith_texts(hadiths)
+	return out
+
+
 ## Joins several [ar, en, ur] lines into one.
 static func _join(lines: Array) -> Dictionary:
 	var ar: PackedStringArray = []
@@ -95,7 +132,8 @@ static func for_key(key: String) -> Dictionary:
 			lines.append(quran_ref(int(r[0]), int(r[1]), int(r[2])))
 	if BOOKS.has(key):
 		lines.append(BOOKS[key])
-	return {} if lines.is_empty() else _join(lines)
+	var nums: Array = [HADITH_KEYS[key]] if HADITH_KEYS.has(key) else []
+	return {} if lines.is_empty() else combine([], lines, nums) if not nums.is_empty() else _join(lines)
 
 
 ## Reference for generated Quran / Hijri questions.

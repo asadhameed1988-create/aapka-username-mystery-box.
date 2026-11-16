@@ -1,0 +1,253 @@
+extends RefCounted
+## Fiqh questions of the four Sunni schools. Every text is [English, Urdu, Arabic].
+## TOPICS: one question per school that has an answer in "ans" (the school's well-known,
+## relied-upon position). A school is left out when its position is not clear-cut.
+## "all" = the four schools agree. "refs" = Quran refs (References.QURAN keys or [s, a, b])
+## and "hadith" = Sahih al-Bukhari numbers (text shown from HadithData).
+## IMPORTANT: to be reviewed by qualified scholars of each school before release.
+
+const SCHOOLS := {
+	"hanafi": ["Fiqh Hanafi", "فقہ حنفی", "الفقه الحنفي"],
+	"shafii": ["Fiqh Shafi'i", "فقہ شافعی", "الفقه الشافعي"],
+	"maliki": ["Fiqh Maliki", "فقہ مالکی", "الفقه المالكي"],
+	"hanbali": ["Fiqh Hanbali", "فقہ حنبلی", "الفقه الحنبلي"],
+	"all": ["all four schools", "چاروں مذاہب", "المذاهب الأربعة"],
+}
+const SCHOOL_ORDER := ["hanafi", "shafii", "maliki", "hanbali", "all"]
+
+## Main reference book of each school: [Arabic, English, Urdu] (same order as References.BOOKS).
+const BOOKS := {
+	"hanafi": ["مختصر القدوري؛ الهداية للمرغيناني", "Mukhtasar al-Quduri; al-Hidayah (al-Marghinani)", "مختصر القدوری؛ الہدایہ (مرغینانی)"],
+	"shafii": ["منهاج الطالبين للنووي", "Minhaj at-Talibin (an-Nawawi)", "منہاج الطالبین (نووی)"],
+	"maliki": ["الرسالة لابن أبي زيد القيرواني", "Ar-Risalah (Ibn Abi Zayd al-Qayrawani)", "الرسالہ (ابن ابی زید قیروانی)"],
+	"hanbali": ["زاد المستقنع؛ عمدة الفقه لابن قدامة", "Zad al-Mustaqni'; 'Umdat al-Fiqh (Ibn Qudamah)", "زاد المستقنع؛ عمدۃ الفقہ (ابن قدامہ)"],
+	"all": ["الفقه على المذاهب الأربعة للجزيري", "Al-Fiqh 'ala al-Madhahib al-Arba'ah (al-Jaziri)", "الفقہ علی المذاہب الاربعہ (جزیری)"],
+	"compare": ["الفقه على المذاهب الأربعة للجزيري", "Al-Fiqh 'ala al-Madhahib al-Arba'ah (al-Jaziri)", "الفقہ علی المذاہب الاربعہ (جزیری)"],
+}
+
+const FARD := ["Fard (obligatory)", "فرض", "فرض"]
+const WAJIB := ["Wajib", "واجب", "واجب"]
+const SUNNAH := ["Sunnah / recommended", "سنت / مستحب", "سنة / مستحب"]
+const SUNNAH_M := ["Sunnah mu'akkadah", "سنتِ مؤکدہ", "سنة مؤكدة"]
+const YES := ["Yes", "ہاں", "نعم"]
+const NO := ["No", "نہیں", "لا"]
+
+const TOPICS := [
+	# ---------------------------------------------------------------- purification
+	{"id": "head_wipe", "q": ["In wudu, how much of the head is fard to wipe?", "وضو میں سر کے کتنے حصے کا مسح فرض ہے؟", "ما القدر المفروض مسحه من الرأس في الوضوء؟"],
+		"opts": {"quarter": ["One quarter of the head", "چوتھائی سر", "ربع الرأس"], "part": ["Any part, even a little", "سر کا کوئی بھی حصہ، تھوڑا سا بھی", "أي جزء ولو قليلًا"], "whole": ["The whole head", "پورا سر", "الرأس كله"]},
+		"ans": {"hanafi": "quarter", "shafii": "part", "maliki": "whole", "hanbali": "whole"}, "refs": ["quran_5_6"]},
+	{"id": "wudu_count", "q": ["How many fard acts are there in wudu?", "وضو کے فرائض کتنے ہیں؟", "كم فرائض الوضوء؟"],
+		"opts": {"4": ["4", "4", "٤"], "6": ["6", "6", "٦"], "7": ["7", "7", "٧"]},
+		"ans": {"hanafi": "4", "shafii": "6", "maliki": "7", "hanbali": "6"}, "refs": ["quran_5_6"]},
+	{"id": "wudu_niyyah", "q": ["What is the ruling of intention (niyyah) in wudu?", "وضو میں نیت کا حکم کیا ہے؟", "ما حكم النية في الوضوء؟"],
+		"opts": {"fard": ["Fard / a condition of wudu", "فرض / وضو کی شرط", "فرض / شرط للوضوء"], "sunnah": SUNNAH, "makruh": ["Makruh", "مکروہ", "مكروه"]},
+		"ans": {"hanafi": "sunnah", "shafii": "fard", "maliki": "fard", "hanbali": "fard"}, "hadith": [1]},
+	{"id": "wudu_tartib", "q": ["Keeping the order (tartib) of the limbs in wudu is:", "وضو میں اعضا کی ترتیب کا حکم:", "حكم الترتيب بين أعضاء الوضوء:"],
+		"opts": {"fard": FARD, "sunnah": SUNNAH, "makruh": ["Makruh", "مکروہ", "مكروه"]},
+		"ans": {"hanafi": "sunnah", "shafii": "fard", "maliki": "sunnah", "hanbali": "fard"}, "refs": ["quran_5_6"]},
+	{"id": "wudu_muwalat", "q": ["Washing the limbs one after another without a long gap (muwalat) in wudu is:", "وضو میں اعضا کو بغیر وقفے کے پے در پے دھونا (موالات):", "حكم الموالاة في الوضوء:"],
+		"opts": {"fard": FARD, "sunnah": SUNNAH, "makruh": ["Makruh", "مکروہ", "مكروه"]},
+		"ans": {"hanafi": "sunnah", "shafii": "sunnah", "maliki": "fard", "hanbali": "fard"}},
+	{"id": "touch_woman", "q": ["Does touching the skin of a non-mahram woman break wudu?", "کیا نامحرم عورت کی جلد کو چھونے سے وضو ٹوٹ جاتا ہے؟", "هل ينقض لمس بشرة المرأة الأجنبية الوضوء؟"],
+		"opts": {"no": NO, "yes": ["Yes, in every case", "ہاں، ہر صورت میں", "نعم، مطلقًا"], "desire": ["Only if done with desire", "صرف شہوت کے ساتھ ہو تو", "فقط إذا كان بشهوة"]},
+		"ans": {"hanafi": "no", "shafii": "yes", "maliki": "desire", "hanbali": "desire"}},
+	{"id": "blood", "q": ["Does blood flowing out of a wound break wudu?", "کیا زخم سے خون بہہ نکلنے سے وضو ٹوٹ جاتا ہے؟", "هل ينقض الوضوءَ خروجُ الدم السائل من الجرح؟"],
+		"opts": {"yes": ["Yes, when it flows", "ہاں، جب بہہ جائے", "نعم، إذا سال"], "no": NO, "large": ["Only if it is a large amount", "صرف زیادہ مقدار میں ہو تو", "فقط إذا كان كثيرًا فاحشًا"]},
+		"ans": {"hanafi": "yes", "shafii": "no", "maliki": "no", "hanbali": "large"}},
+	{"id": "touch_private", "q": ["Does touching one's private part with the hand break wudu?", "کیا ہاتھ سے اپنی شرمگاہ چھونے سے وضو ٹوٹ جاتا ہے؟", "هل ينقض مسُّ الفرج باليد الوضوء؟"],
+		"opts": {"no": NO, "yes": ["Yes, with the palm or inside of the fingers", "ہاں، ہتھیلی یا انگلیوں کے اندرونی حصے سے", "نعم، بباطن الكف أو الأصابع"], "desire": ["Only if done with desire", "صرف شہوت کے ساتھ ہو تو", "فقط إذا كان بشهوة"]},
+		"ans": {"hanafi": "no", "shafii": "yes", "maliki": "yes", "hanbali": "yes"}},
+	{"id": "camel_meat", "q": ["Does eating camel meat break wudu?", "کیا اونٹ کا گوشت کھانے سے وضو ٹوٹ جاتا ہے؟", "هل ينقض أكلُ لحم الإبل الوضوء؟"],
+		"opts": {"yes": YES, "no": NO, "raw": ["Only if it is raw", "صرف کچا ہو تو", "فقط إذا كان نيئًا"]},
+		"ans": {"hanafi": "no", "shafii": "no", "maliki": "no", "hanbali": "yes"}},
+	{"id": "dog_vessel", "q": ["How is a vessel washed after a dog drinks from it?", "کتا برتن میں منہ ڈال دے تو برتن کیسے دھویا جائے؟", "كيف يُغسل الإناء إذا ولغ فيه الكلب؟"],
+		"opts": {"three": ["Three times", "تین مرتبہ", "ثلاث مرات"], "seven_earth": ["Seven times, once with earth", "سات مرتبہ، ایک بار مٹی سے", "سبع مرات إحداهن بالتراب"], "seven_worship": ["Seven times as an act of worship (the dog is pure)", "سات مرتبہ بطورِ عبادت (کتا پاک ہے)", "سبع مرات تعبّدًا (والكلب طاهر)"]},
+		"ans": {"hanafi": "three", "shafii": "seven_earth", "maliki": "seven_worship", "hanbali": "seven_earth"}, "hadith": [172]},
+	{"id": "khuff", "q": ["How long may a resident wipe over leather socks (khuff)?", "مقیم کتنی مدت تک موزوں پر مسح کر سکتا ہے؟", "ما مدة المسح على الخفين للمقيم؟"],
+		"opts": {"day": ["One day and one night", "ایک دن اور ایک رات", "يوم وليلة"], "three": ["Three days and nights", "تین دن اور تین راتیں", "ثلاثة أيام بلياليها"], "none": ["No fixed time limit", "کوئی مقررہ مدت نہیں", "لا حدّ لمدته"]},
+		"ans": {"hanafi": "day", "shafii": "day", "maliki": "none", "hanbali": "day"}},
+	# ---------------------------------------------------------------- prayer
+	{"id": "witr_ruling", "q": ["What is the ruling of the Witr prayer?", "نمازِ وتر کا حکم کیا ہے؟", "ما حكم صلاة الوتر؟"],
+		"opts": {"wajib": WAJIB, "sunnah": SUNNAH_M, "fard": FARD},
+		"ans": {"hanafi": "wajib", "shafii": "sunnah", "maliki": "sunnah", "hanbali": "sunnah"}, "hadith": [990]},
+	{"id": "witr_min", "q": ["What is the least number of rak'ahs of Witr?", "وتر کی کم از کم رکعتیں کتنی ہیں؟", "ما أقل عدد ركعات الوتر؟"],
+		"opts": {"1": ["1", "1", "١"], "3": ["3 (always three, with one salam)", "3 (ہمیشہ تین، ایک سلام سے)", "٣ (دائمًا ثلاث بسلام واحد)"], "5": ["5", "5", "٥"]},
+		"ans": {"hanafi": "3", "shafii": "1", "maliki": "1", "hanbali": "1"}, "hadith": [990]},
+	{"id": "fatiha_follower", "q": ["Should the follower recite Al-Fatiha behind the imam?", "کیا مقتدی امام کے پیچھے سورۃ الفاتحہ پڑھے؟", "هل يقرأ المأموم الفاتحة خلف الإمام؟"],
+		"opts": {"no": ["No, the imam's recitation is enough", "نہیں، امام کی قراءت کافی ہے", "لا، تكفيه قراءة الإمام"], "must": ["Yes, in every rak'ah (obligatory)", "ہاں، ہر رکعت میں (لازم)", "نعم، في كل ركعة وجوبًا"], "silent": ["Only in the silent prayers (recommended)", "صرف سری نمازوں میں (مستحب)", "في السرية فقط استحبابًا"]},
+		"ans": {"hanafi": "no", "shafii": "must", "maliki": "silent", "hanbali": "silent"}, "hadith": [756]},
+	{"id": "raf_yadayn", "q": ["Raising the hands when going into ruku and rising from it is:", "رکوع میں جاتے اور اٹھتے وقت ہاتھ اٹھانا (رفع الیدین):", "رفع اليدين عند الركوع والرفع منه:"],
+		"opts": {"no": ["Not done: hands are raised only at the opening takbir", "نہیں: صرف تکبیرِ تحریمہ میں ہاتھ اٹھائے جاتے ہیں", "لا يُشرع: الرفع عند تكبيرة الإحرام فقط"], "sunnah": ["Sunnah", "سنت", "سنة"], "fard": FARD},
+		"ans": {"hanafi": "no", "shafii": "sunnah", "maliki": "no", "hanbali": "sunnah"}, "hadith": [735]},
+	{"id": "qunut_fajr", "q": ["Is qunut recited regularly in the Fajr prayer?", "کیا فجر کی نماز میں ہمیشہ قنوت پڑھی جاتی ہے؟", "هل يُقنت في صلاة الفجر دائمًا؟"],
+		"opts": {"witr": ["No, qunut is read in Witr", "نہیں، قنوت وتر میں پڑھی جاتی ہے", "لا، القنوت في الوتر"], "yes": ["Yes, it is sunnah in Fajr", "ہاں، فجر میں سنت ہے", "نعم، يُسن في الفجر"], "fard": ["Yes, it is fard in Fajr", "ہاں، فجر میں فرض ہے", "نعم، فرض في الفجر"]},
+		"ans": {"hanafi": "witr", "shafii": "yes", "maliki": "yes", "hanbali": "witr"}},
+	{"id": "first_tashahhud", "q": ["The first sitting (tashahhud) in a 3 or 4 rak'ah prayer is:", "تین یا چار رکعت والی نماز میں قعدۂ اولیٰ کا حکم:", "حكم التشهد الأول في الصلاة الثلاثية والرباعية:"],
+		"opts": {"wajib": WAJIB, "sunnah": SUNNAH, "fard": FARD},
+		"ans": {"hanafi": "wajib", "shafii": "sunnah", "maliki": "sunnah", "hanbali": "wajib"}},
+	{"id": "ruku_tasbih", "q": ["Saying 'Subhana Rabbiyal-Azim' in ruku is:", "رکوع میں 'سبحان ربی العظیم' کہنا:", "حكم قول 'سبحان ربي العظيم' في الركوع:"],
+		"opts": {"sunnah": SUNNAH, "wajib": WAJIB, "fard": FARD},
+		"ans": {"hanafi": "sunnah", "shafii": "sunnah", "maliki": "sunnah", "hanbali": "wajib"}},
+	{"id": "tilawat", "q": ["The prostration of recitation (sajda-e-tilawat) is:", "سجدۂ تلاوت کا حکم:", "حكم سجود التلاوة:"],
+		"opts": {"wajib": WAJIB, "sunnah": SUNNAH, "fard": FARD},
+		"ans": {"hanafi": "wajib", "shafii": "sunnah", "maliki": "sunnah", "hanbali": "sunnah"}},
+	{"id": "eid_prayer", "q": ["What is the ruling of the Eid prayer?", "نمازِ عید کا حکم کیا ہے؟", "ما حكم صلاة العيد؟"],
+		"opts": {"wajib": WAJIB, "sunnah": SUNNAH_M, "kifayah": ["Fard kifayah (communal duty)", "فرضِ کفایہ", "فرض كفاية"]},
+		"ans": {"hanafi": "wajib", "shafii": "sunnah", "maliki": "sunnah", "hanbali": "kifayah"}},
+	{"id": "jumuah_number", "q": ["What is the least number of people for the Jumu'ah prayer?", "جمعہ کی نماز کے لیے کم از کم کتنے افراد ضروری ہیں؟", "ما أقل عدد تنعقد به الجمعة؟"],
+		"opts": {"three": ["The imam and three others", "امام اور تین دیگر افراد", "الإمام وثلاثة سواه"], "forty": ["Forty", "چالیس", "أربعون"], "twelve": ["Twelve besides the imam", "امام کے علاوہ بارہ", "اثنا عشر سوى الإمام"]},
+		"ans": {"hanafi": "three", "shafii": "forty", "maliki": "twelve", "hanbali": "forty"}, "refs": ["quran_62"]},
+	{"id": "sahw_place", "q": ["When is Sajda-e-Sahw (prostration of forgetfulness) done?", "سجدۂ سہو کب کیا جاتا ہے؟", "متى يكون سجود السهو؟"],
+		"opts": {"after": ["After one salam at the end", "آخر میں ایک سلام کے بعد", "بعد السلام الأول في آخر الصلاة"], "before": ["Before the salam", "سلام سے پہلے", "قبل السلام"], "split": ["Before the salam if something was left out, after it if something was added", "کمی ہو تو سلام سے پہلے، زیادتی ہو تو سلام کے بعد", "قبل السلام للنقص وبعده للزيادة"]},
+		"ans": {"hanafi": "after", "shafii": "before", "maliki": "split"}},
+	# ---------------------------------------------------------------- fasting and zakat
+	{"id": "kaffarah_eating", "q": ["Eating on purpose during a Ramadan fast requires:", "رمضان کا روزہ جان بوجھ کر کھا کر توڑنے پر کیا لازم ہے؟", "ماذا يجب على من أفطر في رمضان بالأكل عمدًا؟"],
+		"opts": {"both": ["Qada and kaffarah (60 days of fasting)", "قضا اور کفارہ (60 روزے)", "القضاء والكفارة (صيام ستين يومًا)"], "qada": ["Qada only (making up the day)", "صرف قضا", "القضاء فقط"], "none": ["Nothing", "کچھ نہیں", "لا شيء"]},
+		"ans": {"hanafi": "both", "shafii": "qada", "maliki": "both", "hanbali": "qada"}},
+	{"id": "fitr_value", "q": ["May Sadaqat al-Fitr be given as money (its value)?", "کیا صدقۂ فطر رقم (قیمت) کی صورت میں دیا جا سکتا ہے؟", "هل يجوز إخراج زكاة الفطر نقدًا (بالقيمة)؟"],
+		"opts": {"yes": ["Yes, its value may be given", "ہاں، قیمت دی جا سکتی ہے", "نعم، تجوز القيمة"], "food": ["No, it must be given as food", "نہیں، اناج ہی دینا ضروری ہے", "لا، يجب إخراجها طعامًا"], "gold": ["Only in gold", "صرف سونے میں", "ذهبًا فقط"]},
+		"ans": {"hanafi": "yes", "shafii": "food", "maliki": "food", "hanbali": "food"}, "hadith": [1503]},
+	{"id": "jewellery_zakat", "q": ["Is zakat due on gold jewellery that a woman wears?", "کیا عورت کے استعمال کے سونے کے زیور پر زکوٰۃ ہے؟", "هل تجب الزكاة في حلي الذهب الذي تلبسه المرأة؟"],
+		"opts": {"yes": YES, "no": ["No, not on permitted jewellery that is worn", "نہیں، جائز استعمال کے زیور پر نہیں", "لا، في الحلي المباح المستعمل"], "silver": ["Only if it is silver", "صرف چاندی ہو تو", "فقط إن كان فضة"]},
+		"ans": {"hanafi": "yes", "shafii": "no", "maliki": "no", "hanbali": "no"}},
+	{"id": "gold_nisab", "q": ["What is the nisab (minimum amount) of gold for zakat?", "سونے پر زکوٰۃ کا نصاب کتنا ہے؟", "ما نصاب الذهب في الزكاة؟"],
+		"opts": {"20": ["20 mithqal (7.5 tola)", "20 مثقال (ساڑھے سات تولہ)", "عشرون مثقالًا"], "10": ["10 mithqal", "10 مثقال", "عشرة مثاقيل"], "50": ["50 mithqal", "50 مثقال", "خمسون مثقالًا"]},
+		"ans": {"all": "20"}},
+	{"id": "silver_nisab", "q": ["What is the nisab of silver for zakat?", "چاندی پر زکوٰۃ کا نصاب کتنا ہے؟", "ما نصاب الفضة في الزكاة؟"],
+		"opts": {"200": ["200 dirhams (52.5 tola)", "200 درہم (ساڑھے باون تولہ)", "مئتا درهم"], "100": ["100 dirhams", "100 درہم", "مئة درهم"], "500": ["500 dirhams", "500 درہم", "خمسمئة درهم"]},
+		"ans": {"all": "200"}},
+	# ---------------------------------------------------------------- nikah
+	{"id": "wali", "q": ["Is a nikah valid if an adult, sane woman marries without her wali (guardian)?", "کیا عاقلہ بالغہ عورت ولی کے بغیر نکاح کرے تو نکاح درست ہے؟", "هل يصح نكاح المرأة البالغة العاقلة بغير وليّ؟"],
+		"opts": {"valid": ["Yes, it is valid", "ہاں، نکاح درست ہے", "نعم، يصح"], "invalid": ["No, it is not valid", "نہیں، نکاح درست نہیں", "لا، لا يصح"], "qadi": ["Only with a judge's permission later", "صرف بعد میں قاضی کی اجازت سے", "فقط بإذن القاضي لاحقًا"]},
+		"ans": {"hanafi": "valid", "shafii": "invalid", "maliki": "invalid", "hanbali": "invalid"}},
+	{"id": "witnesses", "q": ["Who can be the two witnesses of a nikah?", "نکاح کے گواہ کون ہو سکتے ہیں؟", "من يصح أن يشهد على عقد النكاح؟"],
+		"opts": {"mixed": ["Two men, or one man and two women", "دو مرد، یا ایک مرد اور دو عورتیں", "رجلان، أو رجل وامرأتان"], "men": ["Only two men", "صرف دو مرد", "رجلان فقط"], "none": ["No witnesses are needed", "گواہوں کی ضرورت نہیں", "لا يُشترط الشهود"]},
+		"ans": {"hanafi": "mixed", "shafii": "men", "hanbali": "men"}},
+	{"id": "mahr_min", "q": ["What is the least amount of mahr?", "مہر کی کم از کم مقدار کتنی ہے؟", "ما أقل المهر؟"],
+		"opts": {"ten": ["Ten dirhams", "دس درہم", "عشرة دراهم"], "quarter": ["A quarter dinar (three dirhams)", "چوتھائی دینار (تین درہم)", "ربع دينار (ثلاثة دراهم)"], "none": ["There is no fixed minimum", "کوئی کم از کم مقدار مقرر نہیں", "لا حدّ لأقله"]},
+		"ans": {"hanafi": "ten", "shafii": "none", "maliki": "quarter", "hanbali": "none"}, "refs": ["quran_4_4"]},
+	{"id": "mahr_wajib", "q": ["Is mahr obligatory in a nikah?", "کیا نکاح میں مہر لازم ہے؟", "هل المهر واجب في النكاح؟"],
+		"opts": {"yes": ["Yes, it is obligatory and belongs to the wife", "ہاں، لازم ہے اور بیوی کا حق ہے", "نعم، واجب وهو حق للزوجة"], "father": ["Yes, and it belongs to her father", "ہاں، اور یہ والد کا حق ہے", "نعم، وهو حق لأبيها"], "no": ["No, it is optional", "نہیں، اختیاری ہے", "لا، هو اختياري"]},
+		"ans": {"all": "yes"}, "refs": ["quran_4_4"]},
+	{"id": "four_wives", "q": ["At most how many wives may a man have at one time?", "ایک وقت میں زیادہ سے زیادہ کتنی بیویاں ہو سکتی ہیں؟", "ما أكثر عدد الزوجات في وقت واحد؟"],
+		"opts": {"4": ["4 (with justice between them)", "4 (عدل کی شرط کے ساتھ)", "٤ (بشرط العدل)"], "2": ["2", "2", "٢"], "7": ["7", "7", "٧"]},
+		"ans": {"all": "4"}, "refs": ["quran_4_3"]},
+	{"id": "muslimah_nonmuslim", "q": ["Is the nikah of a Muslim woman with a non-Muslim man valid?", "کیا مسلمان عورت کا غیر مسلم مرد سے نکاح درست ہے؟", "هل يصح نكاح المسلمة من غير المسلم؟"],
+		"opts": {"no": ["No, it is not valid", "نہیں، درست نہیں", "لا، لا يصح"], "yes": ["Yes, it is valid", "ہاں، درست ہے", "نعم، يصح"], "book": ["Only with a man of the People of the Book", "صرف اہلِ کتاب مرد سے", "فقط من الكتابي"]},
+		"ans": {"all": "no"}, "refs": ["quran_2_221", "quran_60_10"]},
+	# ---------------------------------------------------------------- talaq and iddah
+	{"id": "triple_talaq", "q": ["If a husband gives three talaqs in one sitting, how many take effect?", "شوہر ایک مجلس میں تین طلاقیں دے تو کتنی واقع ہوتی ہیں؟", "إذا طلّق الزوج ثلاثًا في مجلس واحد فكم يقع؟"],
+		"opts": {"three": ["Three (talaq mughallazah)", "تین (طلاقِ مغلظہ)", "ثلاث (طلاق بائن بينونة كبرى)"], "one": ["Only one", "صرف ایک", "واحدة فقط"], "none": ["None", "کوئی نہیں", "لا يقع شيء"]},
+		"ans": {"all": "three"}, "refs": ["quran_2_229", "quran_2_230"]},
+	{"id": "rajah_count", "q": ["After how many talaqs can a husband still take his wife back during the iddah?", "کتنی طلاقوں کے بعد بھی شوہر عدت میں رجوع کر سکتا ہے؟", "بعد كم طلقة يجوز للزوج أن يراجع زوجته في العدة؟"],
+		"opts": {"two": ["After the first or second (revocable) talaq", "پہلی یا دوسری (رجعی) طلاق کے بعد", "بعد الطلقة الأولى أو الثانية (الرجعية)"], "three": ["Even after the third talaq", "تیسری طلاق کے بعد بھی", "حتى بعد الثالثة"], "never": ["Never", "کبھی نہیں", "لا يجوز أبدًا"]},
+		"ans": {"all": "two"}, "refs": ["quran_2_229"]},
+	{"id": "quru", "q": ["The 'three quru' of iddah for a divorced woman who menstruates are:", "حیض والی مطلقہ کی عدت کے 'تین قروء' سے کیا مراد ہے؟", "المراد بـ'ثلاثة قروء' في عدة المطلقة ذات الحيض:"],
+		"opts": {"haydh": ["Three menstrual periods", "تین حیض", "ثلاث حيضات"], "tuhr": ["Three periods of purity", "تین طہر", "ثلاثة أطهار"], "months": ["Three months in every case", "ہر صورت میں تین مہینے", "ثلاثة أشهر مطلقًا"]},
+		"ans": {"hanafi": "haydh", "shafii": "tuhr", "maliki": "tuhr", "hanbali": "haydh"}, "refs": ["quran_2_228"]},
+	{"id": "iddah_widow", "q": ["What is the iddah of a widow who is not pregnant?", "غیر حاملہ بیوہ کی عدت کتنی ہے؟", "ما عدة المتوفى عنها زوجها غير الحامل؟"],
+		"opts": {"4m10": ["4 months and 10 days", "4 مہینے 10 دن", "أربعة أشهر وعشرة أيام"], "3m": ["3 months", "3 مہینے", "ثلاثة أشهر"], "1y": ["1 year", "1 سال", "سنة"]},
+		"ans": {"all": "4m10"}, "refs": ["quran_2_234"]},
+	{"id": "iddah_pregnant", "q": ["What is the iddah of a pregnant woman (divorced or widowed)?", "حاملہ عورت (مطلقہ یا بیوہ) کی عدت کب تک ہے؟", "ما عدة الحامل (مطلقة أو متوفى عنها)؟"],
+		"opts": {"birth": ["Until she gives birth", "بچے کی پیدائش تک", "حتى تضع حملها"], "3m": ["3 months", "3 مہینے", "ثلاثة أشهر"], "4m10": ["4 months and 10 days only", "صرف 4 مہینے 10 دن", "أربعة أشهر وعشرة أيام فقط"]},
+		"ans": {"all": "birth"}, "refs": ["quran_65_4"]},
+	{"id": "iddah_no_consummation", "q": ["What is the iddah of a woman divorced before the marriage was consummated?", "رخصتی (خلوت) سے پہلے طلاق ہو جائے تو عدت کتنی ہے؟", "ما عدة المطلقة قبل الدخول؟"],
+		"opts": {"none": ["There is no iddah", "کوئی عدت نہیں", "لا عدة عليها"], "3m": ["3 months", "3 مہینے", "ثلاثة أشهر"], "three": ["Three menstrual periods", "تین حیض", "ثلاث حيضات"]},
+		"ans": {"all": "none"}, "refs": ["quran_33_49"]},
+	{"id": "talaq_ahsan", "q": ["Which is the best (ahsan) way of talaq?", "طلاق کا سب سے بہتر (احسن) طریقہ کون سا ہے؟", "ما أحسن الطلاق؟"],
+		"opts": {"one": ["One talaq in a period of purity without intercourse, then leaving her until the iddah ends", "ایسے طہر میں ایک طلاق جس میں صحبت نہ کی ہو، پھر عدت پوری ہونے دی جائے", "طلقة واحدة في طهر لم يجامعها فيه ثم يتركها حتى تنقضي العدة"], "three": ["Three talaqs together", "تینوں طلاقیں ایک ساتھ", "ثلاث طلقات مجتمعة"], "menses": ["One talaq during her monthly period", "حیض کی حالت میں ایک طلاق", "طلقة في الحيض"]},
+		"ans": {"hanafi": "one"}, "hadith": [5251]},
+	{"id": "khula", "q": ["What is khula?", "خلع کیا ہے؟", "ما الخلع؟"],
+		"opts": {"wife": ["Separation the wife asks for, giving back something (such as the mahr)", "بیوی کی طرف سے علیحدگی، کچھ مال (جیسے مہر) واپس دے کر", "فراق بطلب الزوجة مقابل عوض (كالمهر)"], "husband": ["A talaq the husband gives in anger", "غصے میں شوہر کی دی ہوئی طلاق", "طلاق الزوج في الغضب"], "court": ["A fine paid to the court", "عدالت کو ادا کیا گیا جرمانہ", "غرامة تُدفع للمحكمة"]},
+		"ans": {"all": "wife"}, "refs": ["quran_2_229"]},
+]
+
+## Questions with several right answers ("choose all that are correct").
+## "a" = options [en, ur, ar]; "correct" = indices of right options.
+const MULTI := [
+	{"school": "hanafi", "q": ["Which of these are sunnah in wudu?", "ان میں سے وضو کی سنتیں کون سی ہیں؟", "أي هذه من سنن الوضوء؟"],
+		"a": [["Saying Bismillah", "بسم اللہ پڑھنا", "التسمية"], ["Using a miswak", "مسواک کرنا", "السواك"], ["Rinsing the mouth", "کلی کرنا", "المضمضة"], ["Wiping a quarter of the head", "چوتھائی سر کا مسح", "مسح ربع الرأس"], ["Washing the feet up to the ankles", "ٹخنوں سمیت پاؤں دھونا", "غسل الرجلين إلى الكعبين"]],
+		"correct": [0, 1, 2], "refs": ["quran_5_6"]},
+	{"school": "hanafi", "q": ["Which of these break wudu?", "ان میں سے کن چیزوں سے وضو ٹوٹ جاتا ہے؟", "أي هذه تنقض الوضوء؟"],
+		"a": [["Blood flowing out of a wound", "زخم سے خون بہنا", "خروج الدم السائل"], ["Vomiting a mouthful", "منہ بھر کر قے", "القيء ملء الفم"], ["Sleeping lying down", "لیٹ کر سونا", "النوم مضطجعًا"], ["Touching a woman's skin", "عورت کی جلد چھونا", "لمس بشرة المرأة"], ["Eating camel meat", "اونٹ کا گوشت کھانا", "أكل لحم الإبل"]],
+		"correct": [0, 1, 2]},
+	{"school": "shafii", "q": ["Which of these are fard in wudu?", "ان میں سے وضو کے فرائض کون سے ہیں؟", "أي هذه من فرائض الوضوء؟"],
+		"a": [["Intention (niyyah)", "نیت", "النية"], ["Keeping the order (tartib)", "ترتیب", "الترتيب"], ["Washing the face", "چہرہ دھونا", "غسل الوجه"], ["Rinsing the mouth", "کلی کرنا", "المضمضة"], ["Saying Bismillah", "بسم اللہ پڑھنا", "التسمية"]],
+		"correct": [0, 1, 2], "refs": ["quran_5_6"]},
+	{"school": "hanafi", "q": ["Which of these are fard in ghusl?", "ان میں سے غسل کے فرائض کون سے ہیں؟", "أي هذه من فرائض الغسل؟"],
+		"a": [["Rinsing the mouth", "کلی کرنا", "المضمضة"], ["Rinsing the nose", "ناک میں پانی ڈالنا", "الاستنشاق"], ["Washing the whole body", "پورے بدن پر پانی بہانا", "غسل جميع البدن"], ["Doing wudu first", "پہلے وضو کرنا", "الوضوء قبله"], ["Saying Bismillah", "بسم اللہ پڑھنا", "التسمية"]],
+		"correct": [0, 1, 2]},
+	{"school": "hanafi", "q": ["Which of these are wajib in salah?", "ان میں سے نماز کے واجبات کون سے ہیں؟", "أي هذه من واجبات الصلاة؟"],
+		"a": [["Reciting Al-Fatiha", "سورۃ الفاتحہ پڑھنا", "قراءة الفاتحة"], ["The first sitting (qa'dah ula)", "قعدۂ اولیٰ", "القعدة الأولى"], ["Ending with the word salam", "لفظِ سلام سے نماز ختم کرنا", "الخروج بلفظ السلام"], ["The opening takbir", "تکبیرِ تحریمہ", "تكبيرة الإحرام"], ["Ruku", "رکوع", "الركوع"]],
+		"correct": [0, 1, 2]},
+	{"school": "all", "q": ["Which of these break the fast?", "ان میں سے کن چیزوں سے روزہ ٹوٹ جاتا ہے؟", "أي هذه تفسد الصوم؟"],
+		"a": [["Eating on purpose", "جان بوجھ کر کھانا", "الأكل عمدًا"], ["Drinking on purpose", "جان بوجھ کر پینا", "الشرب عمدًا"], ["Eating by mistake (forgetting)", "بھول کر کھانا", "الأكل ناسيًا"], ["Using a miswak", "مسواک کرنا", "السواك"]],
+		"correct": [0, 1], "hadith": [1933]},
+	{"school": "all", "q": ["Which of these may receive zakat (Quran 9:60)?", "ان میں سے کن کو زکوٰۃ دی جا سکتی ہے؟ (التوبہ 60)", "أي هؤلاء من مصارف الزكاة؟"],
+		"a": [["The poor (fuqara)", "فقراء", "الفقراء"], ["The needy (masakin)", "مساکین", "المساكين"], ["Those in debt", "قرض دار", "الغارمون"], ["One's own parents", "اپنے والدین", "الوالدان"], ["Building a masjid", "مسجد کی تعمیر", "بناء المسجد"]],
+		"correct": [0, 1, 2], "refs": ["quran_9_60"]},
+	{"school": "all", "q": ["Which of these iddah periods are right?", "ان میں سے عدت کی کون سی مدتیں درست ہیں؟", "أي هذه العِدد صحيحة؟"],
+		"a": [["Widow (not pregnant): 4 months and 10 days", "بیوہ (غیر حاملہ): 4 مہینے 10 دن", "المتوفى عنها: أربعة أشهر وعشرًا"], ["Pregnant woman: until she gives birth", "حاملہ: بچے کی پیدائش تک", "الحامل: وضع الحمل"], ["A woman who does not menstruate: 3 months", "جسے حیض نہ آتا ہو: 3 مہینے", "التي لا تحيض: ثلاثة أشهر"], ["Divorced woman: one week", "مطلقہ: ایک ہفتہ", "المطلقة: أسبوع"], ["Widow: one year", "بیوہ: ایک سال", "المتوفى عنها: سنة"]],
+		"correct": [0, 1, 2], "refs": ["quran_2_234", "quran_65_4"]},
+	{"school": "all", "q": ["Which of these are pillars of Islam?", "ان میں سے اسلام کے ارکان کون سے ہیں؟", "أي هذه من أركان الإسلام؟"],
+		"a": [["Salah", "نماز", "الصلاة"], ["Zakat", "زکوٰۃ", "الزكاة"], ["Hajj", "حج", "الحج"], ["Eid prayer", "نمازِ عید", "صلاة العيد"], ["Umrah", "عمرہ", "العمرة"]],
+		"correct": [0, 1, 2], "hadith": [8]},
+]
+
+## Questions about well-known hadiths of Sahih al-Bukhari (number = "hadith").
+const HADITH_Q := [
+	{"hadith": 1, "q": ["According to the hadith, deeds are judged by...", "حدیث کے مطابق اعمال کا دار و مدار کس پر ہے؟", "بحسب الحديث، الأعمال بـ..."],
+		"a": [["intentions", "نیتوں پر", "النيات"], ["results", "نتیجوں پر", "النتائج"], ["people's praise", "لوگوں کی تعریف پر", "ثناء الناس"]]},
+	{"hadith": 8, "q": ["The hadith says Islam is built upon how many things?", "حدیث کے مطابق اسلام کی بنیاد کتنی چیزوں پر ہے؟", "بُني الإسلام على كم بحسب الحديث؟"],
+		"a": [["Five", "پانچ", "خمس"], ["Three", "تین", "ثلاث"], ["Seven", "سات", "سبع"]]},
+	{"hadith": 13, "q": ["None of you truly believes until he loves for his brother...", "تم میں سے کوئی مومن نہیں ہو سکتا جب تک اپنے بھائی کے لیے...", "لا يؤمن أحدكم حتى يحب لأخيه..."],
+		"a": [["what he loves for himself", "وہی پسند نہ کرے جو اپنے لیے پسند کرتا ہے", "ما يحب لنفسه"], ["more wealth than himself", "اپنے سے زیادہ مال پسند نہ کرے", "مالًا أكثر منه"], ["a long life", "لمبی عمر پسند نہ کرے", "طول العمر"]]},
+	{"hadith": 10, "q": ["A (true) Muslim is the one from whose ... other Muslims are safe.", "مسلمان وہ ہے جس کی ... سے دوسرے مسلمان محفوظ رہیں۔", "المسلم من سلم المسلمون من ..."],
+		"a": [["tongue and hands", "زبان اور ہاتھ", "لسانه ويده"], ["wealth", "مال", "ماله"], ["house", "گھر", "بيته"]]},
+	{"hadith": 6114, "q": ["According to the hadith, the strong person is the one who...", "حدیث کے مطابق طاقتور کون ہے؟", "بحسب الحديث، الشديد هو الذي..."],
+		"a": [["controls himself when angry", "جو غصے کے وقت اپنے آپ پر قابو رکھے", "يملك نفسه عند الغضب"], ["wins every wrestling match", "جو ہر کشتی جیت لے", "يغلب في المصارعة"], ["has the most wealth", "جس کے پاس سب سے زیادہ مال ہو", "أكثر الناس مالًا"]]},
+	{"hadith": 5376, "q": ["Before eating, the Prophet ﷺ taught: say Bismillah and eat with...", "کھانے سے پہلے حضور ﷺ نے سکھایا: بسم اللہ پڑھو اور ... سے کھاؤ", "علّم النبي ﷺ: سمِّ الله وكل بـ..."],
+		"a": [["your right hand, from what is near you", "دائیں ہاتھ سے، اپنے سامنے سے", "بيمينك ومما يليك"], ["your left hand", "بائیں ہاتھ سے", "بشمالك"], ["a spoon only", "صرف چمچ سے", "بالملعقة فقط"]]},
+	{"hadith": 528, "q": ["The Prophet ﷺ compared the five daily prayers to...", "حضور ﷺ نے پانچ نمازوں کو کس چیز سے تشبیہ دی؟", "شبّه النبي ﷺ الصلوات الخمس بـ..."],
+		"a": [["a river at the door in which one bathes five times a day", "دروازے پر بہتا دریا جس میں روز پانچ بار نہایا جائے", "نهر بباب أحدكم يغتسل منه كل يوم خمسًا"], ["a lamp in the night", "رات کا چراغ", "سراج في الليل"], ["a tall tree", "اونچا درخت", "شجرة عالية"]]},
+	{"hadith": 631, "q": ["'Pray as you have seen me praying' - who said this?", "'نماز اسی طرح پڑھو جیسے مجھے پڑھتے دیکھا' - یہ کس کا فرمان ہے؟", "'صلوا كما رأيتموني أصلي' - من قائل هذا؟"],
+		"a": [["The Prophet Muhammad ﷺ", "حضور نبی کریم ﷺ", "النبي محمد ﷺ"], ["Hazrat Umar (RA)", "حضرت عمرؓ", "عمر رضي الله عنه"], ["Imam Abu Hanifa", "امام ابو حنیفہؒ", "الإمام أبو حنيفة"]]},
+	{"hadith": 1903, "q": ["Whoever does not give up false speech while fasting, Allah has no need of his leaving...", "جو روزے میں جھوٹ بولنا نہ چھوڑے، اللہ کو اس کے ... چھوڑنے کی کوئی حاجت نہیں", "من لم يدع قول الزور والعمل به فليس لله حاجة في أن يدع..."],
+		"a": [["his food and drink", "کھانا پینا", "طعامه وشرابه"], ["his sleep", "سونا", "نومه"], ["his work", "کام کاج", "عمله"]]},
+	{"hadith": 1899, "q": ["When Ramadan begins, the gates of ... are opened.", "جب رمضان آتا ہے تو ... کے دروازے کھول دیے جاتے ہیں۔", "إذا دخل رمضان فُتحت أبواب..."],
+		"a": [["Paradise (Jannah)", "جنت", "الجنة"], ["the markets", "بازاروں", "الأسواق"], ["the schools", "مدرسوں", "المدارس"]]},
+	{"hadith": 5027, "q": ["The best of you are those who learn and teach...", "تم میں سب سے بہتر وہ ہے جو ... سیکھے اور سکھائے", "خيركم من تعلّم ... وعلّمه"],
+		"a": [["the Quran", "قرآن", "القرآن"], ["poetry", "شاعری", "الشعر"], ["trade", "تجارت", "التجارة"]]},
+	{"hadith": 5065, "q": ["'O young people! Whoever among you can afford it should...'", "'اے نوجوانو! تم میں سے جو استطاعت رکھے وہ...'", "'يا معشر الشباب، من استطاع منكم الباءة فـ...'"],
+		"a": [["marry", "نکاح کرے", "ليتزوج"], ["travel", "سفر کرے", "ليسافر"], ["buy a house", "گھر خریدے", "ليشترِ بيتًا"]]},
+	{"hadith": 5090, "q": ["A woman is married for four things; the hadith says choose the one with...", "عورت سے چار چیزوں کی وجہ سے نکاح کیا جاتا ہے؛ حدیث کہتی ہے ... والی کو ترجیح دو", "تُنكح المرأة لأربع... فاظفر بذات..."],
+		"a": [["religion (deen)", "دین", "الدين"], ["wealth", "مال", "المال"], ["beauty", "خوبصورتی", "الجمال"]]},
+	{"hadith": 5971, "q": ["Who most deserves good companionship, according to the hadith?", "حدیث کے مطابق حسنِ سلوک کا سب سے زیادہ حقدار کون ہے؟", "من أحق الناس بحسن الصحبة بحسب الحديث؟"],
+		"a": [["Your mother (said three times), then your father", "تمہاری ماں (تین بار)، پھر تمہارا باپ", "أمك (ثلاثًا) ثم أبوك"], ["Your friend", "تمہارا دوست", "صديقك"], ["Your neighbour", "تمہارا پڑوسی", "جارك"]]},
+	{"hadith": 6094, "q": ["Truthfulness leads to righteousness, and righteousness leads to...", "سچائی نیکی کی طرف لے جاتی ہے، اور نیکی ... کی طرف", "الصدق يهدي إلى البر، والبر يهدي إلى..."],
+		"a": [["Paradise", "جنت", "الجنة"], ["wealth", "مال", "المال"], ["fame", "شہرت", "الشهرة"]]},
+	{"hadith": 2442, "q": ["A Muslim is a brother of a Muslim; he does not...", "مسلمان مسلمان کا بھائی ہے؛ وہ اس پر...", "المسلم أخو المسلم لا..."],
+		"a": [["wrong him nor hand him over (to an enemy)", "نہ ظلم کرتا ہے نہ اسے (دشمن کے) حوالے کرتا ہے", "يظلمه ولا يسلمه"], ["visit him", "ملاقات نہیں کرتا", "يزوره"], ["share food with him", "کھانا نہیں بانٹتا", "يطعمه"]]},
+	{"hadith": 6011, "q": ["The believers, in their love and mercy for each other, are like...", "مومن آپس کی محبت اور رحم میں ... کی مانند ہیں", "مثل المؤمنين في توادّهم وتراحمهم مثل..."],
+		"a": [["one body", "ایک جسم", "الجسد الواحد"], ["two rivers", "دو دریا", "نهرين"], ["a busy market", "مصروف بازار", "سوق مزدحم"]]},
+	{"hadith": 135, "q": ["Allah does not accept the prayer of one who has broken his wudu until he...", "جس کا وضو ٹوٹ جائے اس کی نماز قبول نہیں جب تک وہ...", "لا تُقبل صلاة من أحدث حتى..."],
+		"a": [["performs wudu", "وضو نہ کر لے", "يتوضأ"], ["gives charity", "صدقہ نہ دے", "يتصدق"], ["fasts", "روزہ نہ رکھے", "يصوم"]]},
+	{"hadith": 50, "q": ["In the hadith of Jibreel (AS), three levels of the religion are mentioned: Islam, Iman and...", "حدیثِ جبرائیلؑ میں دین کے تین درجے: اسلام، ایمان اور...", "في حديث جبريل عليه السلام: الإسلام والإيمان و..."],
+		"a": [["Ihsan", "احسان", "الإحسان"], ["Jihad", "جہاد", "الجهاد"], ["Hijrah", "ہجرت", "الهجرة"]]},
+	{"hadith": 1909, "q": ["The hadith says: start and end the fast of Ramadan on seeing...", "حدیث: رمضان کا روزہ ... دیکھ کر شروع کرو اور دیکھ کر ختم کرو", "صوموا لرؤيته وأفطروا لرؤيته، أي رؤية..."],
+		"a": [["the new moon (hilal)", "نیا چاند (ہلال)", "الهلال"], ["the sun", "سورج", "الشمس"], ["the stars", "ستارے", "النجوم"]]},
+	{"hadith": 6018, "q": ["Whoever believes in Allah and the Last Day should not harm his...", "جو اللہ اور آخرت پر ایمان رکھتا ہے وہ اپنے ... کو تکلیف نہ دے", "من كان يؤمن بالله واليوم الآخر فلا يؤذِ..."],
+		"a": [["neighbour", "پڑوسی", "جاره"], ["camel", "اونٹ", "بعيره"], ["tree", "درخت", "شجره"]]},
+]
+
+
+## [topic index, school] for every topic/school pair that has an answer.
+static func pairs() -> Array:
+	var out: Array = []
+	for t in TOPICS.size():
+		var ans: Dictionary = TOPICS[t]["ans"]
+		for school in SCHOOL_ORDER:
+			if ans.has(school):
+				out.append([t, school])
+	return out

@@ -184,3 +184,13 @@ MB-010 ui/panel_brass_9slice.png 512x512 transparent
 - Islamic questions show a reference after the right answer (Arabic line: surah + ayah numbers or the
   book; plus English/Urdu) and the box result lists every question, answer and reference.
   No Quran verse text is shown (references only). scripts/pcg/References.gd.
+
+## Update 2026-11-16 (3) – Four schools, choose-all, hadith text, question language
+- FiqhData.gd (126 four-school questions, 9 choose-all, 21 hadith questions), HadithData.gd
+  (29 Bukhari hadiths, Arabic + English), References.combine (Quran + books + hadith text).
+- QuizView: Urdu / English / Arabic question switch (settings.qlang), choose-all mode with Check,
+  hint greys out a wrong option, hadith text in a scrollable reference panel.
+- All bank questions and templates have Arabic text; CountryData has Arabic country names.
+- Tests (browser Godot 4.7.2): every question template checked in EN/UR/AR (0 problems),
+  126/126 fiqh, 9/9 choose-all, 21/21 hadith with text, decks 0 repeats, gameplay OK.
+- docs/SCHOLAR_REVIEW.md for the owner's scholars. Not reviewed yet.
