@@ -12,6 +12,7 @@ const Rng = preload("res://scripts/pcg/Rng.gd")
 const Bank = preload("res://scripts/pcg/QuestionBank.gd")
 const Quran = preload("res://scripts/pcg/QuranData.gd")
 const World = preload("res://scripts/pcg/CountryData.gd")
+const Refs = preload("res://scripts/pcg/References.gd")
 
 const TYPE := "quiz"
 const CATEGORIES := ["islam", "gk"]
@@ -146,6 +147,28 @@ static func texts(spec: Dictionary, lang: String) -> Dictionary:
 	for i in p["order"]:
 		answers.append(str(item["a"][int(i)][li]))
 	return {"question": str(item["q"][li]), "answers": answers}
+
+
+## Reference for an Islamic question: {"ar", "en", "ur"}, or {} (general knowledge).
+static func reference_of(spec: Dictionary) -> Dictionary:
+	var p: Dictionary = spec.get("params", {})
+	if str(p.get("cat", "")) != "islam":
+		return {}
+	var tpl: String = str(p.get("tpl", ""))
+	var idx: int = int(p.get("idx", 0))
+	match tpl:
+		"bank":
+			return Refs.for_key(str(Bank.ISLAM[idx].get("src", "")))
+		"surah_name", "surah_number", "surah_ayahs", "surah_juz":
+			return Refs.for_surahs([idx + 1])
+		"surah_after", "surah_before":
+			return Refs.for_surahs([idx + 1, idx + 2])
+		"first3", "most3", "fewest3":
+			var t: Array = unrank3(idx)
+			return Refs.for_surahs([int(t[0]) + 1, int(t[1]) + 1, int(t[2]) + 1])
+		"hijri_after", "hijri_number":
+			return Refs.for_hijri()
+	return {}
 
 
 # ------------------------------------------------------------------ question makers

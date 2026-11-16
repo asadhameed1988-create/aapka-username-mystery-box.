@@ -164,19 +164,33 @@ func has_achievement(id: String) -> bool:
 	return (GameState.data["achievements"] as Array).has(id)
 
 
+## Hints belong to the box being played: HINTS_PER_BOX each box, never saved up.
+const HINTS_PER_BOX := 3
+
+
 func hint_tokens() -> int:
-	return int(GameState.data["inventory"]["hints"])
+	var d: Dictionary = GameState.data
+	return maxi(0, HINTS_PER_BOX + int(d.get("box_hint_bonus", 0)) - int(d.get("box_hints_used", 0)))
 
 
 func spend_hint() -> bool:
 	if hint_tokens() <= 0:
 		return false
-	GameState.data["inventory"]["hints"] = hint_tokens() - 1
+	GameState.data["box_hints_used"] = int(GameState.data.get("box_hints_used", 0)) + 1
 	return true
 
 
+## Extra hint for the CURRENT box only (rewarded ad).
 func add_hints(amount: int) -> void:
-	GameState.data["inventory"]["hints"] = mini(MAX_HINT_TOKENS, hint_tokens() + amount)
+	GameState.data["box_hint_bonus"] = int(GameState.data.get("box_hint_bonus", 0)) + amount
+
+
+func hint_bonus_used() -> bool:
+	return int(GameState.data.get("box_hint_bonus", 0)) > 0
+
+
+func coins(kind: String) -> int:
+	return int((GameState.data["coins"] as Dictionary).get(kind, 0))
 
 
 ## Journal notes that are open now (see Content.JOURNAL).
@@ -255,7 +269,11 @@ func complete(mission: Dictionary, time_sec: float, hints: int) -> Dictionary:
 		stats["fast"] = int(stats["fast"]) + 1
 	if float(stats["best_time"]) <= 0.0 or time_sec < float(stats["best_time"]):
 		stats["best_time"] = time_sec
-	add_hints(tokens)
+	tokens = 0   # hints are per box now; nothing is saved up
+	# Coins: gold for a clean box (no hints, no mistakes), silver otherwise.
+	var coin_kind: String = "gold" if hints == 0 else "silver"
+	var coin_amount: int = 3 + clampi(diff - 1, 0, 2)
+	d["coins"][coin_kind] = coins(coin_kind) + coin_amount
 	# Prize every BOXES_PER_REWARD boxes, until every prize is won.
 	var new_reward: int = -1
 	var can_win: int = mini(Content.rewards().size(), int(stats["solved"]) / Content.BOXES_PER_REWARD)
@@ -276,4 +294,4 @@ func complete(mission: Dictionary, time_sec: float, hints: int) -> Dictionary:
 	Ads.box_finished()
 	Analytics.track("box_complete", {"mode": mode, "difficulty": diff, "seconds": int(time_sec), "hints": hints})
 	Online.sync_progress()
-	return {"delta": delta, "rating": float(d["rating"]), "tokens": tokens, "new_achievements": unlocked, "new_reward": new_reward}
+	return {"delta": delta, "rating": float(d["rating"]), "tokens": tokens, "new_achievements": unlocked, "new_reward": new_reward, "coin_kind": coin_kind, "coin_amount": coin_amount}

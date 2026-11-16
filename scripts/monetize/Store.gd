@@ -11,7 +11,6 @@ const MAX_HINTS_WITH_PACK := 99
 ## Product ids must match the ids created in Google Play Console.
 const PRODUCTS := {
 	"remove_ads": {"consumable": false, "title": "store_remove_ads"},
-	"hint_pack_20": {"consumable": true, "title": "store_hint_pack", "hints": 20},
 }
 
 var _provider = null

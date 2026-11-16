@@ -41,6 +41,7 @@ func _ready() -> void:
 
 	var stats: Dictionary = GameState.data["stats"]
 	box.add_child(Ui.label(Loc.t("stats_boxes", [int(stats["solved"])]), 32, Ui.TEXT))
+	box.add_child(Ui.label(Loc.t("coins_total", [Missions.coins("gold"), Missions.coins("silver")]), 30, Ui.GOLD))
 
 	if GameState.has_mission():
 		_add(box, Loc.t("continue"), _on_continue)

@@ -137,6 +137,8 @@ func _ready() -> void:
 	print("MENU_OK children=", menu.get_child_count(), " t=", Time.get_ticks_msec() / 1000)
 	menu.queue_free()
 
+	# The software-rendered test browser is slow: play with the light box (no shadows / particles).
+	GameState.data["settings"]["quality"] = "low"
 	# Play 11 Islamic boxes (crosses into chapter 2) and 3 of the others (crosses into chapter 2) and check prizes.
 	for sec in ["islam", "gk", "math"]:
 		GameState.data["section_ref"] = sec
@@ -164,6 +166,16 @@ func _ready() -> void:
 			sgame.queue_free()
 			await get_tree().process_frame
 		print("SECTION_OK ", sec, " boxes=", Missions.section_boxes(sec), " chapter=", Missions.section_chapter(sec))
+	print("COINS_OK gold=", Missions.coins("gold"), " silver=", Missions.coins("silver"), " hints_in_new_box=", Missions.hint_tokens())
+	var ref_count: int = 0
+	var QG = load("res://scripts/pcg/QuizGenerator.gd")
+	for t in QG.templates("islam"):
+		for k in mini(int(t[1]), 80):
+			var sp: Dictionary = QG.build("islam", str(t[0]), k, 1)
+			if bool(sp["valid"]) and not QG.reference_of(sp).is_empty():
+				ref_count += 1
+	print("REFERENCES islam questions with a reference: ", ref_count)
+	print("REF example: ", QG.reference_of(QG.build("islam", "bank", 26, 1)))
 	print("REWARDS_OK won=", Missions.rewards_won(), " of ", Content.rewards().size(), " solved=", GameState.data["stats"]["solved"],
 		" achievements=", GameState.data["achievements"])
 	for lang_code in ["en", "ur"]:

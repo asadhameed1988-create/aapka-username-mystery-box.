@@ -30,6 +30,9 @@ func _defaults() -> Dictionary:
 		"current_stage": 0,
 		"mission_time": 0.0,
 		"mission_hints": 0,
+		"box_hints_used": 0,
+		"box_hint_bonus": 0,
+		"coins": {"gold": 0, "silver": 0},
 		"mode": "endless",
 		"daily_done": "",
 		"chapter_ref": [1, 0],
@@ -78,7 +81,7 @@ func repair() -> void:
 	for k in defaults.keys():
 		if not data.has(k):
 			data[k] = defaults[k]
-	for k in ["stats", "inventory", "settings", "online", "purchases", "ads", "sections"]:
+	for k in ["stats", "inventory", "settings", "online", "purchases", "ads", "sections", "coins"]:
 		if typeof(data.get(k)) != TYPE_DICTIONARY:
 			data[k] = defaults[k]
 		for sub_key in (defaults[k] as Dictionary).keys():
@@ -110,6 +113,8 @@ func start_mission(mission: Dictionary, mode: String) -> void:
 	data["current_stage"] = 0
 	data["mission_time"] = 0.0
 	data["mission_hints"] = 0
+	data["box_hints_used"] = 0
+	data["box_hint_bonus"] = 0
 	data["mode"] = mode
 	save_game()
 

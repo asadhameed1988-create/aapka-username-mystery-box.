@@ -173,3 +173,14 @@ MB-010 ui/panel_brass_9slice.png 512x512 transparent
 - Release builds show no ads until real AdMob ids are set in AdmobProvider.gd.
 - docs/PRIVACY_POLICY.md (final English; CONTACT_EMAIL still to fill), docs/STORE_LISTING.md,
   render.yaml + docs/SERVER_SETUP.md (Render + Neon), DATABASE_URL accepts postgres:// URLs.
+
+## Update 2026-11-16 (2) – Box look, coins, references, hints (owner feedback)
+- Box3D rebuilt: plinth, bands, framed panels, brass corner brackets, pearl star inlays, lock plate
+  with keyhole, two-tier lid with brass ring + owner's symbol, velvet lining with coins, display
+  table, rim light, shadows, filmic tonemap + glow. Opening: lid, inner glow, sparks and a coin
+  shower (gold for a clean box, silver otherwise) with a coin sound (tools/make_audio.py coins).
+- Coins counted (gold/silver) on the menu and in Settings.
+- Hints: 3 per box, never saved up; one extra per box from a rewarded ad. Hint pack removed.
+- Islamic questions show a reference after the right answer (Arabic line: surah + ayah numbers or the
+  book; plus English/Urdu) and the box result lists every question, answer and reference.
+  No Quran verse text is shown (references only). scripts/pcg/References.gd.

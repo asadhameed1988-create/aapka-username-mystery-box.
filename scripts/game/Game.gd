@@ -79,13 +79,14 @@ func _build_ui() -> void:
 	back.custom_minimum_size = Vector2(220, 96)
 	back.pressed.connect(_leave)
 	_stage_label = Ui.label("", 30, Ui.GOLD)
-	_hint_btn = Ui.button(Loc.t("hint_count", [Missions.hint_tokens()]))
+	_hint_btn = Ui.button("")
 	_hint_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_hint_btn.custom_minimum_size = Vector2(220, 96)
 	_hint_btn.pressed.connect(_on_hint)
 	bar.add_child(back)
 	bar.add_child(_stage_label)
 	bar.add_child(_hint_btn)
+	_update_hint_button()
 	root.add_child(bar)
 
 	var svc: SubViewportContainer = SubViewportContainer.new()
@@ -145,16 +146,16 @@ func _load_stage() -> void:
 	if mode == "section":
 		var sec: String = str(_mission.get("section", "islam"))
 		var boxes: int = Missions.section_boxes(sec)
-		_stage_label.text = Loc.t("stage_section", [Missions.section_chapter(sec), boxes % Content.BOXES_PER_CHAPTER + 1, Content.BOXES_PER_CHAPTER, _stage + 1, _stages.size()])
+		_stage_label.text = Loc.t("stage_section", [Missions.section_chapter(sec), boxes % Content.BOXES_PER_CHAPTER + 1, Content.BOXES_PER_CHAPTER, mini(_stage + 1, _stages.size()), _stages.size()])
 	elif mode == "chapter":
 		var ref: Array = GameState.data["chapter_ref"]
-		_stage_label.text = Loc.t("stage_chapter", [int(ref[0]), int(ref[1]) + 1, level_name, _stage + 1, _stages.size()])
+		_stage_label.text = Loc.t("stage_chapter", [int(ref[0]), int(ref[1]) + 1, level_name, mini(_stage + 1, _stages.size()), _stages.size()])
 	elif mode == "daily":
-		_stage_label.text = Loc.t("stage_daily", [level_name, _stage + 1, _stages.size()])
+		_stage_label.text = Loc.t("stage_daily", [level_name, mini(_stage + 1, _stages.size()), _stages.size()])
 	elif mode == "weekly":
-		_stage_label.text = Loc.t("stage_weekly", [level_name, _stage + 1, _stages.size()])
+		_stage_label.text = Loc.t("stage_weekly", [level_name, mini(_stage + 1, _stages.size()), _stages.size()])
 	else:
-		_stage_label.text = Loc.t("stage", [int(GameState.data["round"]) + 1, level_name, _stage + 1, _stages.size()])
+		_stage_label.text = Loc.t("stage", [int(GameState.data["round"]) + 1, level_name, mini(_stage + 1, _stages.size()), _stages.size()])
 	var script: GDScript = VIEWS[str(spec["type"])]
 	_view = script.new()
 	_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -164,10 +165,26 @@ func _load_stage() -> void:
 	_view.solved.connect(_on_stage_solved)
 
 
+func _update_hint_button() -> void:
+	if _hint_btn == null:
+		return
+	if Missions.hint_tokens() <= 0 and not Missions.hint_bonus_used() and Ads.rewarded_available():
+		_hint_btn.text = Loc.t("hint_ad")
+	else:
+		_hint_btn.text = Loc.t("hint_count", [Missions.hint_tokens()])
+
+
 func _on_hint() -> void:
 	if _finished or _view == null:
 		return
 	if Missions.hint_tokens() <= 0:
+		if not Missions.hint_bonus_used() and Ads.rewarded_available():
+			# One extra hint for this box, only if the player chooses to watch an ad.
+			Ads.reward_granted.connect(func(_amount: int) -> void:
+				if is_inside_tree():
+					_update_hint_button(), CONNECT_ONE_SHOT)
+			Ads.show_rewarded()
+			return
 		_status.add_theme_color_override("font_color", Ui.BAD)
 		_status.text = Loc.t("no_hints")
 		return
@@ -176,7 +193,7 @@ func _on_hint() -> void:
 		_hints += 1
 		Missions.spend_hint()
 		Fx.play("hint")
-		_hint_btn.text = Loc.t("hint_count", [Missions.hint_tokens()])
+		_update_hint_button()
 		_status.add_theme_color_override("font_color", Ui.GOLD)
 		_status.text = text
 
@@ -203,17 +220,20 @@ func _finish() -> void:
 	if _view != null:
 		_view.queue_free()
 		_view = null
-	_box.open_lid()
-	Fx.play("open")
-	_holder.modulate = Color(1.0, 1.0, 1.0, 0.0)
-	create_tween().tween_property(_holder, "modulate:a", 1.0, 0.6).set_delay(0.5)
 	var mode: String = str(GameState.data["mode"])
 	var result: Dictionary = Missions.complete(_mission, _elapsed, _hints)
-	_hint_btn.text = Loc.t("hint_count", [Missions.hint_tokens()])
+	var coin_kind: String = str(result.get("coin_kind", "silver"))
+	_box.open_lid(coin_kind)
+	Fx.play("open")
+	get_tree().create_timer(0.5).timeout.connect(func() -> void: Fx.play("coins"))
+	_holder.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	create_tween().tween_property(_holder, "modulate:a", 1.0, 0.6).set_delay(1.4)
+	_hint_btn.text = Loc.t("hint_count", [0])
 	_holder.add_child(Ui.label(Loc.t("solved_title"), 64, Ui.GOLD))
-	_holder.add_child(Ui.label(Loc.t("result", [Ui.format_time(_elapsed), _hints]), 38, Ui.TEXT))
-	if int(result["tokens"]) > 0:
-		_holder.add_child(Ui.label(Loc.t("earned_hints", [int(result["tokens"])]), 32, Ui.GOOD))
+	var coins_label: Label = Ui.label(Loc.t("coins_" + coin_kind, [int(result.get("coin_amount", 0))]), 44,
+		Color(1.0, 0.82, 0.35) if coin_kind == "gold" else Color(0.86, 0.89, 0.95))
+	_holder.add_child(coins_label)
+	_holder.add_child(Ui.label(Loc.t("result", [Ui.format_time(_elapsed), _hints]), 34, Ui.TEXT))
 	if not (result["new_achievements"] as Array).is_empty():
 		Fx.play("award")
 	for id in result["new_achievements"]:
@@ -224,15 +244,7 @@ func _finish() -> void:
 		Fx.play("award")
 		var prize: Dictionary = Content.rewards()[int(result["new_reward"])]
 		_holder.add_child(Ui.label(Loc.t("reward_new", [str(prize.get(GameState.lang(), prize["en"]))]), 38, Ui.GOLD))
-	if Ads.rewarded_available():
-		var reward_btn: Button = Ui.button(Loc.t("ad_reward", [Ads.REWARD_HINTS]))
-		reward_btn.pressed.connect(func() -> void:
-			reward_btn.disabled = true
-			Ads.show_rewarded())
-		_holder.add_child(reward_btn)
-		Ads.reward_granted.connect(func(_amount: int) -> void:
-			if is_inside_tree():
-				_hint_btn.text = Loc.t("hint_count", [Missions.hint_tokens()]), CONNECT_ONE_SHOT)
+	_holder.add_child(_summary_panel())
 	if mode == "section":
 		var next_sec: Button = Ui.button(Loc.t("next_box"))
 		next_sec.pressed.connect(_next_section_box)
@@ -263,6 +275,48 @@ func _next_box() -> void:
 	Ads.maybe_interstitial(func() -> void:
 		GameState.start_mission(Missions.next_endless(), "endless")
 		Fx.reload())
+
+
+## After the box opens: every question with its right answer, and references for Islamic ones.
+func _summary_panel() -> Control:
+	var QuizGen = load("res://scripts/pcg/QuizGenerator.gd")
+	var MathGen = load("res://scripts/pcg/MathGenerator.gd")
+	var QuizView = load("res://scripts/puzzles/QuizView.gd")
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, 520)
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var col: VBoxContainer = VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 14)
+	scroll.add_child(col)
+	var any: bool = false
+	for i in _stages.size():
+		var spec: Dictionary = _stages[i]
+		var question: String = ""
+		var answer: String = ""
+		var ref: Dictionary = {}
+		if str(spec.get("type", "")) == "quiz":
+			var t: Dictionary = QuizGen.texts(spec, GameState.lang())
+			question = str(t["question"])
+			answer = str(t["answers"][int(spec["solution"][0])])
+			ref = QuizGen.reference_of(spec)
+		elif str(spec.get("type", "")) == "math":
+			question = MathGen.question_text(spec)
+			answer = str(int(spec["params"]["options"][int(spec["solution"][0])]))
+		else:
+			continue
+		if not any:
+			col.add_child(Ui.label(Loc.t("summary_title"), 36, Ui.GOLD))
+			any = true
+		var q: Label = Ui.label("%d. %s" % [i + 1, question], 30, Ui.TEXT)
+		q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		q.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_child(q)
+		col.add_child(Ui.label(Loc.t("summary_answer", [answer]), 30, Ui.GOOD))
+		if not ref.is_empty():
+			col.add_child(QuizView.reference_panel(ref))
+	return scroll if any else Control.new()
 
 
 func _next_section_box() -> void:

@@ -13,7 +13,7 @@ extends Node
 signal reward_granted(amount: int)
 
 const PROVIDER_PATH := "res://scripts/monetize/AdmobProvider.gd"
-const REWARD_HINTS := 3
+const REWARD_HINTS := 1
 const MIN_GAP_SEC := 120
 const FREE_BOXES := 3
 const MAX_REWARDED_PER_DAY := 5

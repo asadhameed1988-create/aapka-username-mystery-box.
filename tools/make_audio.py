@@ -92,6 +92,27 @@ def main():
     music()
 
 
+def clink(freq, dur, rng):
+    """One coin hit: bright inharmonic metal partials with a very short decay."""
+    n = int(SR * dur)
+    t = np.arange(n) / SR
+    ratios = [1.0, 1.52, 2.33, 3.17, 4.08]
+    sig = sum(np.sin(2 * np.pi * freq * r * t + rng.uniform(0, 6.28)) * np.exp(-(18 + 9 * k) * t) / (1 + k)
+              for k, r in enumerate(ratios))
+    return sig * np.minimum(1.0, t / 0.0008)
+
+
+def coins():
+    """A shower of coins: many clinks, dense at first, thinning out."""
+    rng = np.random.default_rng(77)
+    parts = []
+    for i in range(46):
+        when = (rng.uniform(0, 1) ** 1.8) * 1.5
+        parts.append((when, clink(rng.uniform(2400, 5200), 0.35, rng), rng.uniform(0.35, 1.0)))
+    parts.append((0, noise_burst(0.25, rng, 14, 0.5), 0.25))
+    save("coins", mix(1.9, parts), 0.6)
+
+
 def music():
     """Original slow, majestic piece in maqam Hijaz on D: string drone, daf (frame drum),
     oud plucks and a ney (reed flute) melody. Everything wraps around, so the loop is seamless."""
@@ -200,4 +221,8 @@ def music():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "coins":
+        coins()
+    else:
+        main()

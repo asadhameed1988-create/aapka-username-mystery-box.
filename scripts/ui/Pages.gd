@@ -111,22 +111,15 @@ func _build_journal() -> void:
 ## Hint tokens, rewarded ad and the store (shown at the end of Settings).
 func _build_hints_and_store() -> void:
 	_box.add_child(Ui.label(Loc.t("hints_title"), 44, Ui.GOLD))
-	_box.add_child(Ui.label(Loc.t("inv_hints", [Missions.hint_tokens(), Missions.MAX_HINT_TOKENS]), 40, Ui.TEXT))
-	_box.add_child(Ui.label(Loc.t("inv_hints_how"), 30, Ui.MUTED))
-	if Ads.rewarded_available():
-		var watch: Button = Ui.button(Loc.t("ad_reward", [Ads.REWARD_HINTS]))
-		watch.pressed.connect(func() -> void:
-			watch.disabled = true
-			Ads.show_rewarded())
-		_box.add_child(watch)
-		# The reward arrives when the ad finishes, which can be much later than the tap.
-		Ads.reward_granted.connect(func(_amount: int) -> void:
-			_reload(), CONNECT_ONE_SHOT)
+	var hint_line: Label = Ui.label(Loc.t("hints_per_box", [Missions.HINTS_PER_BOX]), 32, Ui.TEXT)
+	hint_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_box.add_child(hint_line)
+	_box.add_child(Ui.label(Loc.t("coins_total", [Missions.coins("gold"), Missions.coins("silver")]), 34, Ui.GOLD))
+	var coin_line: Label = Ui.label(Loc.t("coins_how"), 28, Ui.MUTED)
+	coin_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_box.add_child(coin_line)
 	_box.add_child(Ui.label(Loc.t("store_title"), 44, Ui.GOLD))
 	if Store.available():
-		var pack: Button = Ui.button(Loc.t("store_hint_pack") + "  " + Store.price("hint_pack_20"))
-		pack.pressed.connect(func() -> void: Store.buy("hint_pack_20"))
-		_box.add_child(pack)
 		var no_ads: Button = Ui.button(Loc.t("store_remove_ads") + "  " + Store.price("remove_ads"))
 		if Store.owned("remove_ads"):
 			no_ads.text = Loc.t("store_owned")

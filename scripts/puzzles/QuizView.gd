@@ -14,6 +14,7 @@ var _answer_index: int = 0
 var _buttons: Array = []
 var _feedback: Label
 var _done: bool = false
+var _reference: Dictionary = {}
 
 
 func setup(spec: Dictionary) -> void:
@@ -33,6 +34,7 @@ func setup(spec: Dictionary) -> void:
 		var t: Dictionary = QuizGen.texts(spec, GameState.lang())
 		question = str(t["question"])
 		answers = t["answers"]
+		_reference = QuizGen.reference_of(spec)
 	add_child(Ui.label(heading, 30, Ui.MUTED))
 	var q: Label = Ui.label(question, 72 if str(spec["type"]) == "math" else 44, Ui.GOLD)
 	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -60,13 +62,48 @@ func _choose(index: int) -> void:
 		(_buttons[index] as Button).add_theme_color_override("font_color", Ui.GOOD)
 		_feedback.add_theme_color_override("font_color", Ui.GOOD)
 		_feedback.text = Loc.t("quiz_right")
-		await get_tree().create_timer(0.6).timeout
-		solved.emit()
+		for b in _buttons:
+			(b as Button).disabled = b != _buttons[index]
+		if _reference.is_empty():
+			await get_tree().create_timer(0.6).timeout
+			solved.emit()
+			return
+		# Islamic question: show the reference, then continue when the player is ready.
+		add_child(reference_panel(_reference))
+		var next: Button = Ui.button(Loc.t("quiz_next"))
+		next.pressed.connect(func() -> void: solved.emit())
+		add_child(next)
 		return
 	mistakes += 1
 	Fx.play("wrong")
 	(_buttons[index] as Button).disabled = true
 	_feedback.text = Loc.t("quiz_wrong")
+
+
+## Panel with the Arabic reference line(s) and the same in the player's language.
+static func reference_panel(ref: Dictionary) -> Control:
+	var panel: PanelContainer = PanelContainer.new()
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.06, 0.04, 0.82)
+	style.border_color = Color(0.85, 0.68, 0.32)
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(18)
+	style.set_content_margin_all(22)
+	panel.add_theme_stylebox_override("panel", style)
+	var col: VBoxContainer = VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	panel.add_child(col)
+	col.add_child(Ui.label(Loc.t("reference"), 28, Ui.MUTED))
+	var ar: Label = Ui.label(str(ref["ar"]), 36, Ui.GOLD)
+	ar.text_direction = Control.TEXT_DIRECTION_RTL
+	ar.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(ar)
+	var local: Label = Ui.label(str(ref.get(GameState.lang(), ref["en"])), 28, Ui.TEXT)
+	local.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	local.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(local)
+	return panel
 
 
 ## Removes one wrong answer.
