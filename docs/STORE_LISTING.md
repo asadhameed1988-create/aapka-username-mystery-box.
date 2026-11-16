@@ -6,7 +6,7 @@
 - Package: com.freegamesstation.mysterybox (cannot be changed after the first upload)
 - Category: Games > Trivia
 - Tags: Trivia, Quiz, Educational, Puzzle
-- Contact email: CONTACT_EMAIL
+- Contact email: asadhameed.1988@gmail.com
 - Privacy policy URL:
   https://github.com/asadhameed1988-create/aapka-username-mystery-box./blob/main/docs/PRIVACY_POLICY.md
 

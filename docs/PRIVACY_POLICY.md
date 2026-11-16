@@ -1,7 +1,7 @@
 # Privacy Policy – Mystery Box: Unlock the Unknown
 
 Developer: Free Games Station
-Contact: CONTACT_EMAIL
+Contact: asadhameed.1988@gmail.com
 Effective date: 16 November 2026
 
 This policy explains what the game "Mystery Box: Unlock the Unknown" (the "game") does with information.
@@ -44,7 +44,7 @@ needed to run the game: Google AdMob, Google Play and our server hosting provide
 
 ## Keeping and deleting your data
 You can delete your online account and everything stored about it at any time in the game:
-Profile and Privacy > Delete my online account. You can also ask us by email at CONTACT_EMAIL.
+Profile and Privacy > Delete my online account. You can also ask us by email at asadhameed.1988@gmail.com.
 Leaderboard results and the progress backup are deleted together with the account.
 
 ## Children
