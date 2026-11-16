@@ -1,0 +1,196 @@
+# Builds, on every push to main:
+#   1. "MysteryBox-ads-test-N.apk": Gradle build WITH the AdMob plugin (Google test ads), for phones.
+#   2. "MysteryBox-N.aab": the Google Play upload file, signed with the UPLOAD key.
+#      Only when the repository secret UPLOAD_KEY_PASSWORD exists (16+ characters).
+#
+# Upload key: on the first run with the secret, a new upload key is created, encrypted with
+# that password (AES-256, PBKDF2) and committed as signing/upload.p12.enc. Later runs decrypt it.
+# Without the password the encrypted file is useless. If the password is ever lost, Google Play
+# can reset the upload key (Play Console > Test and release > App integrity), so the game is
+# never lost. The public certificate is attached to each release (upload_certificate.pem).
+name: Build Play release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  GODOT_VERSION: 4.7.2
+  GODOT_RELEASE: stable
+  ADMOB_PLUGIN_TAG_HINT: "7.0"
+  # Google's public TEST AdMob app id (safe to publish; real ids go in AdmobProvider.gd).
+  ADMOB_TEST_APP_ID: ca-app-pub-3940256099942544~3347511713
+
+permissions:
+  contents: write
+
+concurrency:
+  group: play-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download Godot and export templates
+        run: |
+          BASE="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}"
+          curl -fsSL "$BASE/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64.zip" -o /tmp/godot.zip
+          curl -fsSL "$BASE/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_export_templates.tpz" -o /tmp/templates.tpz
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv /tmp/godot/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64 /tmp/godot/godot && chmod +x /tmp/godot/godot
+          T="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}"
+          mkdir -p "$T"
+          unzip -q /tmp/templates.tpz -d /tmp/tpl
+          mv /tmp/tpl/templates/* "$T/"
+          echo "TEMPLATES=$T" >> "$GITHUB_ENV"
+
+      - name: Install Android build template (Gradle)
+        run: |
+          rm -rf android/build
+          mkdir -p android/build
+          unzip -q "$TEMPLATES/android_source.zip" -d android/build
+          printf '%s' "${GODOT_VERSION}.${GODOT_RELEASE}" > android/.build_version
+          touch android/build/.gdignore
+          ls android/build | head
+
+      - name: Install AdMob plugin (godot-sdk-integrations/godot-admob)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/godot-sdk-integrations/godot-admob/releases --paginate \
+            -q '.[] | .tag_name as $t | .assets[] | select(.name | test("^AdmobPlugin-Android-v")) | [$t, .name, .browser_download_url] | @tsv' > /tmp/admob.tsv
+          head -5 /tmp/admob.tsv
+          URL=$(grep -P "Android-v${ADMOB_PLUGIN_TAG_HINT}\.zip" /tmp/admob.tsv | head -1 | cut -f3)
+          if [ -z "$URL" ]; then URL=$(head -1 /tmp/admob.tsv | cut -f3); fi
+          echo "AdMob plugin: $URL"
+          curl -fsSL "$URL" -o /tmp/admob.zip
+          unzip -q -o /tmp/admob.zip -d /tmp/admob
+          SRC=$(dirname "$(find /tmp/admob -path '*addons/AdmobPlugin/plugin.cfg' | head -1)")
+          mkdir -p addons && rm -rf addons/AdmobPlugin && cp -a "$SRC" addons/AdmobPlugin
+          ls addons/AdmobPlugin
+          # Test app id for now; the game itself decides real/test ad units (AdmobProvider.gd).
+          REAL_ID=$(grep -oP 'const ADMOB_APP_ID := "\K[^"]*' scripts/monetize/AdmobProvider.gd || true)
+          IS_REAL=false
+          if [ -n "$REAL_ID" ] && grep -q 'const ADS_REAL := true' scripts/monetize/AdmobProvider.gd; then IS_REAL=true; fi
+          printf '[General]\n\nis_real=%s\n\n[Debug]\n\napp_id="%s"\n\n[Release]\n\napp_id="%s"\n' \
+            "$IS_REAL" "$ADMOB_TEST_APP_ID" "${REAL_ID:-$ADMOB_TEST_APP_ID}" > addons/AdmobPlugin/android_export.cfg
+          cat addons/AdmobPlugin/android_export.cfg
+          if ! grep -q '^\[editor_plugins\]' project.godot; then
+            printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/AdmobPlugin/plugin.cfg")\n' >> project.godot
+          fi
+
+      - name: Version number
+        run: |
+          CODE=$(( 100 + ${{ github.run_number }} ))
+          NAME="1.0.${{ github.run_number }}"
+          sed -i "s/^version\/code=.*/version\/code=${CODE}/; s/^version\/name=.*/version\/name=\"${NAME}\"/" export_presets.cfg
+          echo "VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$NAME" >> "$GITHUB_ENV"
+
+      - name: Debug keystore and editor settings
+        run: |
+          keytool -genkeypair -noprompt -keystore "$HOME/debug.keystore" -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/.config/godot"
+          for F in editor_settings-4.7.tres editor_settings-4.tres; do
+            {
+              echo '[gd_resource type="EditorSettings" format=3]'
+              echo
+              echo '[resource]'
+              echo "export/android/android_sdk_path = \"${ANDROID_HOME}\""
+              echo "export/android/java_sdk_path = \"${JAVA_HOME}\""
+              echo "export/android/debug_keystore = \"${HOME}/debug.keystore\""
+              echo 'export/android/debug_keystore_user = "androiddebugkey"'
+              echo 'export/android/debug_keystore_pass = "android"'
+            } > "$HOME/.config/godot/$F"
+          done
+
+      - name: Import project
+        run: /tmp/godot/godot --headless --path . --import || true
+
+      - name: Generator test (10,000 puzzles)
+        run: /tmp/godot/godot --headless --path . -s tests/batch_test.gd
+
+      - name: Export test APK with ads (Gradle)
+        run: |
+          mkdir -p build
+          /tmp/godot/godot --headless --path . --export-debug "Android APK (testing)" build/mystery_box_test.apk
+          ls -la build
+          test -s build/mystery_box_test.apk
+
+      - name: Upload key (create once, then reuse)
+        id: key
+        env:
+          PW: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$PW" ]; then
+            echo "No UPLOAD_KEY_PASSWORD secret yet: the Play file (AAB) is skipped."
+            echo "ready=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ ${#PW} -lt 16 ]; then
+            echo "::error::UPLOAD_KEY_PASSWORD must be at least 16 characters."; exit 1
+          fi
+          mkdir -p signing
+          if [ -f signing/upload.p12.enc ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in signing/upload.p12.enc -out "$HOME/upload.p12" -pass env:PW
+          else
+            keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$HOME/upload.p12" -alias upload \
+              -keyalg RSA -keysize 4096 -validity 10000 -storepass "$PW" -keypass "$PW" \
+              -dname "CN=Free Games Station, O=Free Games Station, C=PK"
+            openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in "$HOME/upload.p12" -out signing/upload.p12.enc -pass env:PW
+            # Commit only the encrypted key, from a clean clone (this checkout has build changes).
+            git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" /tmp/keyrepo
+            mkdir -p /tmp/keyrepo/signing && cp signing/upload.p12.enc /tmp/keyrepo/signing/
+            cd /tmp/keyrepo
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add signing/upload.p12.enc
+            git commit -m "Add encrypted Play upload key (created by the release workflow)"
+            git push origin HEAD:main
+            cd "$GITHUB_WORKSPACE"
+          fi
+          keytool -list -keystore "$HOME/upload.p12" -storepass "$PW" -alias upload > /dev/null
+          keytool -exportcert -rfc -keystore "$HOME/upload.p12" -storepass "$PW" -alias upload > build/upload_certificate.pem
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$HOME/upload.p12" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=upload" >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Export Play file (AAB)
+        if: steps.key.outputs.ready == 'true'
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+        run: |
+          /tmp/godot/godot --headless --path . --export-release "Android AAB (Google Play)" build/mystery_box.aab
+          ls -la build
+          test -s build/mystery_box.aab
+          jarsigner -verify build/mystery_box.aab | tail -1
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          N=${{ github.run_number }}
+          FILES="build/MysteryBox-ads-test-$N.apk"
+          cp build/mystery_box_test.apk "build/MysteryBox-ads-test-$N.apk"
+          NOTES="Version ${VERSION_NAME} (code ${VERSION_CODE}). Test APK with Google TEST ads."
+          if [ -f build/mystery_box.aab ]; then
+            cp build/mystery_box.aab "build/MysteryBox-$N.aab"
+            FILES="$FILES build/MysteryBox-$N.aab build/upload_certificate.pem"
+            NOTES="$NOTES AAB = file for Google Play (signed with the upload key)."
+          fi
+          gh release create "play-build-$N" $FILES --repo "${{ github.repository }}" --prerelease \
+            --title "Mystery Box ${VERSION_NAME}" --notes "$NOTES"

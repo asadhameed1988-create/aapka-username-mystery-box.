@@ -164,3 +164,12 @@ MB-010 ui/panel_brass_9slice.png 512x512 transparent
   3,000 maths questions (0 problems); 300/300 section boxes; 17 boxes played through the game
   screen (Islamic reached chapter 2); prizes 3 at 17 boxes; pages EN + UR.
 - Islamic questions still need review by a qualified Hanafi scholar before release.
+
+## Update 2026-11-16 – Release pipeline
+- New workflow .github/workflows/build-release.yml: Gradle build with the AdMob plugin (fetched from
+  godot-sdk-integrations/godot-admob releases), test APK with Google TEST ads, and the Play AAB signed
+  with an upload key (needs repository secret UPLOAD_KEY_PASSWORD, 16+ chars; key created once,
+  stored encrypted in signing/upload.p12.enc). Version code = 100 + run number.
+- Release builds show no ads until real AdMob ids are set in AdmobProvider.gd.
+- docs/PRIVACY_POLICY.md (final English; CONTACT_EMAIL still to fill), docs/STORE_LISTING.md,
+  render.yaml + docs/SERVER_SETUP.md (Render + Neon), DATABASE_URL accepts postgres:// URLs.

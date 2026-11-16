@@ -1,0 +1,31 @@
+# Render.com blueprint for the Mystery Box game server (FastAPI + Godot headless generator).
+# In Render: New > Blueprint > pick this repository. Render reads this file.
+# The database is NOT created here: use a free Neon PostgreSQL database (neon.tech) and paste
+# its connection string into DATABASE_URL in the Render dashboard (never into chat or code).
+services:
+  - type: web
+    name: mystery-box-api
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_USER
+        value: owner
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: GODOT_BIN
+        value: /opt/godot/godot
+      - key: GAME_PROJECT_DIR
+        value: /srv/game
+      - key: BACKGROUND_WORKER
+        value: "1"
+      - key: PORT
+        value: "8000"

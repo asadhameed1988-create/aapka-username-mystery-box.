@@ -18,9 +18,18 @@ class Settings:
     environment: str = "development"
 
 
+def _normalise_db_url(url: str) -> str:
+    """Hosted PostgreSQL services (Neon, Render) hand out postgres:// or postgresql:// URLs;
+    SQLAlchemy needs the psycopg driver named explicitly."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 def load_settings() -> Settings:
     s = Settings(
-        database_url=os.getenv("DATABASE_URL", "sqlite:///./mystery_box.db"),
+        database_url=_normalise_db_url(os.getenv("DATABASE_URL", "sqlite:///./mystery_box.db")),
         secret_key=os.getenv("SECRET_KEY", DEV_SECRET),
         admin_user=os.getenv("ADMIN_USER", "admin"),
         admin_password=os.getenv("ADMIN_PASSWORD", ""),

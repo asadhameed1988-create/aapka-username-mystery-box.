@@ -32,6 +32,10 @@ var _showing: String = ""
 func setup() -> void:
 	if not OS.has_feature("android") or not ResourceLoader.exists(ADMOB_SCRIPT):
 		return
+	# A Play release never shows Google's TEST ads: until the real ids are filled in,
+	# release builds simply run without ads. Debug (test) builds show test ads.
+	if not OS.is_debug_build() and not (ADS_REAL and ADMOB_APP_ID != "" and ADMOB_INTERSTITIAL_ID != "" and ADMOB_REWARDED_ID != ""):
+		return
 	var script: Script = load(ADMOB_SCRIPT) as Script
 	if script == null:
 		return
